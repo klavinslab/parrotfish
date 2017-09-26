@@ -1,10 +1,7 @@
 import sys, os, json
 from time import gmtime, strftime
 from datetime import datetime
-from difflib import Differ
-from pprint import pprint
 import difflib
-# from difflib_data import *
 
 # Get that pydent
 sys.path.append('./trident/py')
@@ -105,7 +102,6 @@ def push():
             else:
                 # Show diff
                 with open(file_path, 'r') as file:
-                    d = Differ()
                     form_file = [line[0:-1] for line in file.readlines()]
                     form_code = code.content.split('\n')[0:-1]
                     diff = difflib.ndiff(form_code, form_file)
