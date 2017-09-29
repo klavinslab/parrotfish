@@ -17,6 +17,8 @@ bash setup.sh
 3. Navigate to parrotfish/bin, and [install and configure Trident](https://github.com/klavinslab/trident) there.
 
 ## Using Parrotfish
+### pfish set_remote [url] [username] [password]
+This associates a remote Aquarium server with the current directory (a prerequisite for `push` and `pull`).
 ### pfish pull
 This clones all Operation Type code from the specified server via Trident into the current directory.
 ### pfish push
