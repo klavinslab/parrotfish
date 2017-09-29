@@ -12,6 +12,8 @@ import aq
 # Make sure we have a place to save protocols
 REPOS_PATH = "./repos.json"
 META_DIR = "./meta"
+if not os.path.exists(META_DIR):
+    os.makedirs(META_DIR)
 
 def load_json(file_path):
     try:
