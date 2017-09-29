@@ -33,14 +33,19 @@ def write_json(file_path, dictionary):
     except FileNotFoundError:
         raise
 
-def load_metadata(directory):
-    # Find metadata JSON file
+def load_repos(directory):
     repos = load_json(REPOS_PATH)
     if directory not in repos:
         repos[directory] = {
             "meta_name": randint(0, sys.maxsize)
         }
         write_json(REPOS_PATH, repos)
+
+    return repos
+
+def load_metadata(directory):
+    # Find metadata JSON file
+    repos = load_repos(directory)
 
     # Load metadata
     meta_path = "{0}/{1}.json".format(META_DIR, repos[directory]["meta_name"])
@@ -59,8 +64,44 @@ def to_epoch(date_string):
 
     return epoch
 
+# Set remote server for directory
+def set_remote(directory, url, username, password):
+    repos = load_repos(directory)
+
+    repos[directory]["remote"] = {
+        "url": url,
+        "username": username,
+        "password": password
+    }
+
+    write_json(REPOS_PATH, repos)
+    use_remote(directory)
+    print("Remote server set for this directory")
+
+def use_remote(directory):
+    repos = load_repos(directory)
+
+    try:
+        remote_info = repos[directory]["remote"]
+        config = {
+            "aquarium_url": remote_info["url"],
+            "login": remote_info["username"],
+            "password": remote_info["password"]
+        }
+
+        with open("./trident/py/config.py", "w") as config_file:
+            config_file.write("config = {0}".format(config))
+
+        return True
+    except:
+        print("Could not run pfish command. Have you associated this directory with a remote server yet with 'pfish set_remote'?")
+        
+        return False
+
 # Save remote code to DIR
 def pull(directory):
+    if not use_remote(directory): return
+
     meta = load_metadata(directory)
     
     aq.login()
@@ -97,6 +138,8 @@ def pull(directory):
 
 # Push local code to remote
 def push(directory):
+    if not use_remote(directory): return
+
     meta = load_metadata(directory)
 
     aq.login()
