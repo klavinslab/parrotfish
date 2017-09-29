@@ -4,3 +4,8 @@ PYFISH TODO
 Optimization
 - pfish pull
   - Only load code content if write is necessary
+
+Features
+- pfish add_remote [name] [url]
+  - Save servers in JSON for given repository
+  - pfish push/pull default to last added/last used but can take another name as argument

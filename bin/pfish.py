@@ -1,33 +1,53 @@
 import sys, os, json
 from time import gmtime, strftime
 from datetime import datetime
+from random import randint
 import difflib
+from shell_colors import Colors as c
 
 # Get that pydent
 sys.path.append('./trident/py')
 import aq
 
 # Make sure we have a place to save protocols
-DIR = "./protocols"
-META_DIR = './meta.json'
-if not os.path.exists(DIR):
-    os.makedirs(DIR)
+REPOS_PATH = "./repos.json"
+META_DIR = "./meta"
 
-def load_metadata():
+def load_json(file_path):
     try:
-        with open(META_DIR, 'r') as meta:
-            return json.loads(meta.read())
-    except FileNotFoundError:
-        with open(META_DIR, 'w') as meta:
-            meta.write(json.dumps({}))
+        with open(file_path, 'r') as json_file:
+            return json.loads(json_file.read())
+    except (FileNotFoundError, ValueError) as e:
+        print(e)
+        print("Creating JSON file...")
+        with open(file_path, 'w') as json_file:
+            json_file.write(json.dumps({}))
         return {}
 
-def write_metadata(meta):
+def write_json(file_path, dictionary):
     try:
-        with open(META_DIR, 'w') as meta_file:
-            meta_file.write(json.dumps(meta, indent=4, separators=(',', ': ')))
+        with open(file_path, 'w') as json_file:
+            json_file.write(json.dumps(dictionary, indent=4, separators=(',', ': ')))
     except FileNotFoundError:
         raise
+
+def load_metadata(directory):
+    # Find metadata JSON file
+    repos = load_json(REPOS_PATH)
+    if directory not in repos:
+        repos[directory] = {
+            "meta_name": randint(0, sys.maxsize)
+        }
+        write_json(REPOS_PATH, repos)
+
+    # Load metadata
+    meta_path = "{0}/{1}.json".format(META_DIR, repos[directory]["meta_name"])
+    return load_json(meta_path)
+
+def write_metadata(directory, dictionary):
+    repos = load_json(REPOS_PATH)
+    meta_path = "{0}/{1}.json".format(META_DIR, repos[directory]["meta_name"])
+    write_json(meta_path, dictionary)
 
 def to_epoch(date_string):
     if date_string[-3] == ":":
@@ -38,9 +58,9 @@ def to_epoch(date_string):
     return epoch
 
 # Save remote code to DIR
-def pull():
-    meta = load_metadata()
-
+def pull(directory):
+    meta = load_metadata(directory)
+    
     aq.login()
     for ot in aq.OperationType.all():
         code = ot.code("protocol")
@@ -49,7 +69,7 @@ def pull():
             continue
 
         # Make file path
-        folder_name = './protocols/' + ot.category
+        folder_name = "{0}/{1}".format(directory, ot.category)
         file_path = "{0}/{1}.rb".format(folder_name, ot.name)
 
         if file_path not in meta or meta[file_path]["remote_last_updated"] < to_epoch(code.updated_at):
@@ -71,13 +91,14 @@ def pull():
             }
             print('UPDATED -- {0}'.format(file_path))
 
-    write_metadata(meta)
+    write_metadata(directory, meta)
 
 # Push local code to remote
-def push():
-    meta = load_metadata()
+def push(directory):
+    meta = load_metadata(directory)
 
     aq.login()
+    file_conflict = False
     for file_path in meta:
         if meta[file_path]["local_last_updated"] < os.path.getmtime(file_path):
             # Find OperationType
@@ -105,12 +126,19 @@ def push():
                     form_file = [line[0:-1] for line in file.readlines()]
                     form_code = code.content.split('\n')[0:-1]
                     diff = difflib.ndiff(form_code, form_file)
+                    
+                    diff = [c.RED + line + c.NC if line[0] == '-' else line for line in diff]
+                    diff = [c.GREEN + line + c.NC if line[0] == '+' else line for line in diff]
 
-                    diff = ["\033[1;31m" + line + "\033[0m" if line[0] == '-' else line for line in diff]
-                    diff = ["\033[1;32m" + line + "\033[0m" if line[0] == '+' else line for line in diff]
-
-                    print("\033[1;37mDiff for {0}\033[0m".format(file_path))
-                    print("\033[0;37m  - You must pull the most recent code version in order to push your changes\033[0m\n")
+                    print("\n{white}Diff for {path}{nc}".format(path = file_path, white = c.BWHITE, nc = c.NC))
                     print('\n'.join(list(diff)))
 
-    write_metadata(meta)
+                    file_conflict = True
+
+    if file_conflict:
+        print("\n{white}WARNING: At least one protocol has been edited since you last pulled{nc}".format(white = c.BWHITE, nc = c.NC))
+        print("{gray}Please pull the most recent code version before you push your changes{nc}".format(gray = c.GRAY, nc = c.NC))
+    else:
+        print("{white}Push successfully completed!{nc}".format(white = c.BWHITE, nc = c.NC))
+
+    write_metadata(directory, meta)
