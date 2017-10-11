@@ -5,6 +5,12 @@ Optimization
 - pfish pull
   - Only load code content if write is necessary
 
+Improve Installation Experience
+- pfish.sh should mention installing Trident before everything's ready
+  - "source ..." doesn't work for MacOS?
+- pfish.py should check for Trident install
+- pfish.py should create config.py if it doesn't exist
+
 Features
 + pfish set_remote [name] [url] [login?]
   + Save server login config in JSON for given repository
