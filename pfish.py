@@ -1,13 +1,10 @@
 import sys, os, json
+from pydent import *
 from time import gmtime, strftime
 from datetime import datetime
 from random import randint
 import difflib
 from shell_colors import Colors as c
-
-# Get that pydent
-sys.path.append('./trident/py')
-import aq
 
 # Make sure we have a place to save protocols
 REPOS_PATH = "./repos.json"
@@ -95,7 +92,7 @@ def use_remote(directory):
         return True
     except:
         print("Could not run pfish command. Have you associated this directory with a remote server yet with 'pfish set_remote'?")
-        
+
         return False
 
 # Save remote code to DIR
@@ -103,7 +100,7 @@ def pull(directory):
     if not use_remote(directory): return
 
     meta = load_metadata(directory)
-    
+
     aq.login()
     for ot in aq.OperationType.all():
         code = ot.code("protocol")
@@ -149,36 +146,39 @@ def push(directory):
             # Find OperationType
             category = meta[file_path]["category"]
             name = meta[file_path]["name"]
-            ot = aq.OperationType.where({"category": category, "name": name})[0]
-            
-            # Check if we have latest version
-            code = ot.code("protocol")
-            if meta[file_path]["remote_last_updated"] == to_epoch(code.updated_at):
-                # -- PUSH --
-                # Push code
-                with open(file_path, 'r') as file:
-                    code.content = file.read()
-                    code.update()
-
-                # Update meta
-                meta[file_path]["remote_last_updated"] = to_epoch(code.updated_at)
-                meta[file_path]["local_last_updated"] = os.path.getmtime(file_path)
-
-                print('PUSHED -- {0}'.format(file_path))
+            ots = aq.OperationType.where({"category": category, "name": name})
+            if ots is None or len(ots) == 0:
+                print("Could not find protocol {0}".format(name))
             else:
-                # Show diff
-                with open(file_path, 'r') as file:
-                    form_file = [line[0:-1] for line in file.readlines()]
-                    form_code = code.content.split('\n')[0:-1]
-                    diff = difflib.ndiff(form_code, form_file)
-                    
-                    diff = [c.RED + line + c.NC if line[0] == '-' else line for line in diff]
-                    diff = [c.GREEN + line + c.NC if line[0] == '+' else line for line in diff]
+                ot = ots[0]
+                # Check if we have latest version
+                code = ot.code("protocol")
+                if meta[file_path]["remote_last_updated"] == to_epoch(code.updated_at):
+                    # -- PUSH --
+                    # Push code
+                    with open(file_path, 'r') as file:
+                        code.content = file.read()
+                        code.update()
 
-                    print("\n{white}Diff for {path}{nc}".format(path = file_path, white = c.BWHITE, nc = c.NC))
-                    print('\n'.join(list(diff)))
+                    # Update meta
+                    meta[file_path]["remote_last_updated"] = to_epoch(code.updated_at)
+                    meta[file_path]["local_last_updated"] = os.path.getmtime(file_path)
 
-                    file_conflict = True
+                    print('PUSHED -- {0}'.format(file_path))
+                else:
+                    # Show diff
+                    with open(file_path, 'r') as file:
+                        form_file = [line[0:-1] for line in file.readlines()]
+                        form_code = code.content.split('\n')[0:-1]
+                        diff = difflib.ndiff(form_code, form_file)
+
+                        diff = [c.RED + line + c.NC if line[0] == '-' else line for line in diff]
+                        diff = [c.GREEN + line + c.NC if line[0] == '+' else line for line in diff]
+
+                        print("\n{white}Diff for {path}{nc}".format(path = file_path, white = c.BWHITE, nc = c.NC))
+                        print('\n'.join(list(diff)))
+
+                        file_conflict = True
 
     if file_conflict:
         print("\n{white}WARNING: At least one protocol has been edited since you last pulled{nc}".format(white = c.BWHITE, nc = c.NC))

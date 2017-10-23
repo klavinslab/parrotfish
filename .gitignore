@@ -4,3 +4,4 @@ bin/meta
 protocols
 __pycache__
 trident
+/config.json
