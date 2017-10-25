@@ -1,10 +1,11 @@
-import sys, os, json
-from pydent import *
-from time import gmtime, strftime
+import difflib
+import sys
 from datetime import datetime
 from random import randint
-import difflib
-from shell_colors import Colors as c
+
+from pydent import *
+
+from parrotfish.shell_colors import Colors as c
 
 # Make sure we have a place to save protocols
 REPOS_PATH = "./repos.json"

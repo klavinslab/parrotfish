@@ -2,12 +2,12 @@
   "out_dir": "",
   "in_dir": "",
   "sessions": {
-    "Nursery": {
+    "nursery": {
       "login": "vrana",
       "aquarium_url": "http://52.27.43.242:81",
       "password": "Mountain5"
     },
-    "Production": {
+    "production": {
       "login": "vrana",
       "aquarium_url": "http://52.27.43.242",
       "password": "Mountain5"
