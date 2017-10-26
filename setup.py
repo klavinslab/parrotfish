@@ -16,7 +16,8 @@ tests_require = [
 ]
 
 install_requires = [
-    # package requirements
+    'pydent',
+    'hug'
 ]
 
 classifiers = [],

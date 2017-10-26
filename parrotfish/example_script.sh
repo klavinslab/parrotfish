@@ -2,7 +2,7 @@
 
 pf=pfish_manager.py
 
-# create some sessions
+# create some .sessions
 python $pf register vrana Mountain5 http://52.27.43.242 production
 python $pf register vrana Mountain5 http://52.27.43.242:81 nursery
 

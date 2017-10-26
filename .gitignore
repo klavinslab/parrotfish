@@ -5,3 +5,7 @@ protocols
 __pycache__
 trident
 /parrotfish/config.json
+/tests/secrets/config.json
+.sessions/state.pkl
+*.pkl
+/tests/session_environments/
