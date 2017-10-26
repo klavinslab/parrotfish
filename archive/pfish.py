@@ -5,7 +5,7 @@ from random import randint
 
 from pydent import *
 
-from parrotfish.shell_colors import Colors as c
+from archive.shell_colors import Colors as c
 
 # Make sure we have a place to save protocols
 REPOS_PATH = "./repos.json"

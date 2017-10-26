@@ -1,13 +1,10 @@
+import shutil
 import warnings
 from pathlib import *
+
 import dill
 import hug
 from pydent import *
-import shutil
-
-# TODO: better paths for protocols
-# TODO: better path for state
-# TODO: better handling of categories
 
 API = hug.API('parrotfish')
 
@@ -95,51 +92,73 @@ class ParrotFishMeta(type):
 @hug.object(name='parrotfish', version='1.0.0', api=API)
 class ParrotFishSession(object, metaclass=ParrotFishMeta):
     category = None
+    verbose = True
 
     @classmethod
-    def fetch_helper(cls, parent_class_name):
+    def log(cls, msg):
+        if cls.verbose:
+            print("> "+msg)
+
+    @classmethod
+    def save_code(cls, code):
+        filename = "{}.rb".format(code.parent.name)
+        filepath = Path(cls.catdir, filename)
+        cls.set_category(code.parent.category)
+        with open(filepath, 'w') as f:
+            cls.log("saving {}".format(filepath))
+            f.write(code.content)
+
+    @classmethod
+    def collect_code(cls):
         controller_dict = {
             Library.__name__      : "source",
             OperationType.__name__: "protocol"
         }
 
         # get codes
-        code_containers = []
-        parent_class = AqBase.models[parent_class_name]
-        attr = controller_dict[parent_class_name]
-        if cls.category is None:
-            code_containers = parent_class.all()
-        else:
-            code_containers = parent_class.where({"category": str(cls.category)})
 
-        # save code containers
-        cls.save_code_containers(code_containers, parent_class_name)
-        print("Pulling {} ({}) to {}".format(inflection.pluralize(parent_class_name), cls.category, cls.master))
-        print("\t{} {} found".format(inflection.pluralize(parent_class_name), len(code_containers)))
+        codes = []
+        for parent_class_name, attr in controller_dict.items():
+            code_containers = []
+            parent_class = AqBase.models[parent_class_name]
+            attr = controller_dict[parent_class_name]
+            if cls.category is None:
+                code_containers = parent_class.all()
+            else:
+                code_containers = parent_class.where({"category": str(cls.category)})
 
-        # save code
-        for c in code_containers:
-            code = c.code(attr)
-            filename = "{}.rb".format(c.name)
-            filepath = Path.joinpath(cls.catdir, filename)
-            with open(filepath, 'w') as f:
-                f.write(code.content)
+            cls.log("pulling {} ({}) to {}".format(inflection.pluralize(parent_class_name), cls.category, cls.master))
+            cls.log("\t{} {} found".format(inflection.pluralize(parent_class_name), len(code_containers)))
+
+            # add the container to the code
+            for c in code_containers:
+                code = c.code(attr)
+                code.parent = c
+                codes.append(code)
+
+        return codes
 
     @classmethod
-    def save_code_containers(cls, code_containers, parent_class_name):
-        d = {}
-        d.update(cls.load_code_containers())
-        d.update({parent_class_name: code_containers})
+    def pickle_code(cls, codes):
+        d = cls.unpickle_code()
+        for code in codes:
+            d.update({code.parent.category: {code.parent.name: code}})
         with open(cls.code_pickle, 'wb') as f:
             dill.dump(d, f)
 
     @classmethod
-    def load_code_containers(cls):
-        cpp = cls.code_pickle
-        if cpp.is_file():
-            with open(cpp, 'rb') as f:
+    def unpickle_code(cls):
+        if cls.code_pickle.is_file():
+            with open(cls.code_pickle, 'rb') as f:
                 return dill.load(f)
         return {}
+
+    @classmethod
+    @hug.object.cli
+    def set_versbose(cls, v):
+        """ Turns verbose mode on or off """
+        cls.verbose = v
+        return cls
 
     @classmethod
     @hug.object.cli
@@ -172,8 +191,10 @@ class ParrotFishSession(object, metaclass=ParrotFishMeta):
     @hug.object.cli
     def fetch(cls):
         """ Retrieves protocols from Aquarium """
-        cls.fetch_helper(OperationType.__name__)
-        cls.fetch_helper(Library.__name__)
+        codes = cls.collect_code()
+        cls.pickle_code(codes)
+        for code in codes:
+            cls.save_code(code)
         return cls
 
     @classmethod
@@ -183,9 +204,14 @@ class ParrotFishSession(object, metaclass=ParrotFishMeta):
         categories = cls.category
         if cls.category is None:
             categories = "all"
-        print(
-                "Pushing protocols ({}) to {}: {}".format(categories, Session.session_name,
-                                                          Session.session.aquarium_url))
+
+        codes = cls.collect_code()
+        old_codes = cls.unpickle_code()
+        for code in codes:
+            old_code = old_codes[code.category.name][code.parent.name]
+            # TODO: do a comparison of last update with "code"
+            # update code
+            # TODO: remote_last_updated, local_last_updated
         return cls
 
     @classmethod
@@ -200,7 +226,7 @@ class ParrotFishSession(object, metaclass=ParrotFishMeta):
                 ok = False
         if ok:
             shutil.rmtree(cls.catdir)
-            print("category deleted: {}".format(cls.catdir))
+            cls.log("category deleted: {}".format(cls.catdir))
 
     @classmethod
     @hug.object.cli
@@ -219,8 +245,8 @@ class ParrotFishSession(object, metaclass=ParrotFishMeta):
             m = cls.master
             shutil.rmtree(str(cls.bin))
             Session.reset()
-            print("> protocol bin ({})".format(m))
-            print("> session state deleted ({})".format(p))
+            cls.log("protocol bin ({})".format(m))
+            cls.log("session state deleted ({})".format(p))
 
     @classmethod
     @hug.object.cli
@@ -230,7 +256,7 @@ class ParrotFishSession(object, metaclass=ParrotFishMeta):
             "sessions"    : Session.sessions,
             "session_name": Session.session_name,
             "category"    : cls.category,
-            "bin": cls._bin_location
+            "bin"         : cls._bin_location
         }
 
     @classmethod
@@ -264,7 +290,7 @@ class ParrotFishSession(object, metaclass=ParrotFishMeta):
         if bin_name is None:
             bin_name = cls._default_bin_name
         new_path = Path(parent_dst, bin_name).resolve()
-        print("Setting remote to {}".format(str(new_path)))
+        cls.log("setting remote to {}".format(str(new_path)))
         if new_path != cls.bin:
             cls.copy_bin(new_path)
             if remove_old:
@@ -273,8 +299,7 @@ class ParrotFishSession(object, metaclass=ParrotFishMeta):
             cls.save()
 
 
-# TODO: move code to testing dir exclusively
-def pseudo_cli(command, *args, **kwargs):
+def call_command(command, *args, **kwargs):
     """ simulates running command line for testing purposes """
     Session.reset()
     ParrotFishSession.load()

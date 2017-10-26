@@ -38,8 +38,8 @@ def reset_all():
 @pytest.fixture(scope="function")
 def register(config):
     reset_all()
-    pseudo_cli("reset", force=True)
+    call_command("reset", force=True)
     for session_name, session_config in config.items():
         args = [session_config[x] for x in ["login", "password", "aquarium_url"]]
-        pseudo_cli("register", *args, session_name=session_name)
-        pseudo_cli("register", *args, session_name=session_name)
+        call_command("register", *args, session_name=session_name)
+        call_command("register", *args, session_name=session_name)
