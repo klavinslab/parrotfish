@@ -287,6 +287,7 @@ class ParrotFish(object, metaclass=ParrotFishHook):
         cls.dump_info()
         cls.dump_env()
         cls.dump_run_script()
+        dill.dump_session('entiresession.pkl')
 
     @classmethod
     def dump_run_script(cls):

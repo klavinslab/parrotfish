@@ -20,3 +20,9 @@ Features
 
 Bigfixes
 - More intelligently pull from OTs with conflicting names (prioritize by most recently updated and then id)
+
+
+- Make separate class for the Environment
+    - save session, sessions, root etc.
+    - shouldn't touch main ParrotFish class at all
+- better python and bash run scripts
