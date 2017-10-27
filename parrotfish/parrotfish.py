@@ -11,6 +11,7 @@ logger = CustomLog.get_logger(__name__)
 API = hug.API('parrotfish')
 
 # TODO: default dictionary gets deleted upon reset when environment is not found.
+# TODO: propery setup.py packaging
 
 class ParrotFishHook(type):
 

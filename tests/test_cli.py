@@ -61,7 +61,7 @@ def test_set_remote(register, session_environments):
 
 # def test_pull():
 #     raise NotImplementedError()
-
+# TODO: Better push tests
 def test_push_no_changes():
     call_command("push")
 
