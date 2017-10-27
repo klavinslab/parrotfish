@@ -2,13 +2,15 @@
 # PACKAGE_PARENT = '..'
 # SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
-from .env_mng import *
-from .code_mng import *
 import hug
+
+from .code_mng import *
+from .env_mng import *
 from .log import *
 
 logger = CustomLog.get_logger(__name__)
 API = hug.API('parrotfish')
+
 
 # TODO: default dictionary gets deleted upon reset when environment is not found.
 # TODO: propery setup.py packaging
@@ -17,7 +19,6 @@ API = hug.API('parrotfish')
 # TODO: add file in root folder to 'reconnect' with pfish whereever it is...
 
 class ParrotFishHook(type):
-
     def __getattr__(cls, item):
         if item in Session.sessions:
             getattr(Session, item)
@@ -42,6 +43,7 @@ class ParrotFishHook(type):
         if not cls.category is None:
             return Environment.category_dir(cls.category)
 
+
 @hug.object(name='parrotfish', version='1.0.0', api=API)
 class ParrotFish(object, metaclass=ParrotFishHook):
     category = None
@@ -56,7 +58,6 @@ class ParrotFish(object, metaclass=ParrotFishHook):
         else:
             CustomLog.set_level(logging.CLI)
             logger.cli("verbose OFF")
-
 
     @classmethod
     @hug.object.cli
@@ -95,7 +96,9 @@ class ParrotFish(object, metaclass=ParrotFishHook):
     @classmethod
     @hug.object.cli
     def set_category(cls, name: hug.types.text):
-        """ Sets the category for fetch, pull, push, etc. """
+        """ Sets the category for fetch, pull, push, etc. Set to None or All to use all categories. """
+        if str(name).lower() == "none" or str(name).lower() == "all":
+            name = None
         cls.category = name
         cls.save()
         logger.cli("category set to {}".format(name))
@@ -126,8 +129,8 @@ class ParrotFish(object, metaclass=ParrotFishHook):
     def get_session(cls):
         """ Get the current session json """
         session_json = {
-            "login": Session.session.login,
-            "password": "*"*10,
+            "login"       : Session.session.login,
+            "password"    : "*" * 10,
             "aquarium_url": Session.session.aquarium_url,
             "session_name": Session.session_name
         }
@@ -137,6 +140,7 @@ class ParrotFish(object, metaclass=ParrotFishHook):
     @classmethod
     @hug.object.cli
     def get_category(cls):
+        """ Gets the current category """
         cat = cls.category
         logger.cli("category: {}".format(cat))
         return cat
@@ -144,9 +148,10 @@ class ParrotFish(object, metaclass=ParrotFishHook):
     @classmethod
     @hug.object.cli
     def get_categories(cls):
+        """ Gets the category names and count for protocols found on the Aquarium server """
         cm = CodeManager()
-        cats = cm.categories
-        logger.cli("categories: {}".format(", ".join(cats)))
+        cats = cm.get_category_count()
+        logger.cli("categories: {}".format(json.dumps(cats, indent=4, sort_keys=True)))
         return cats
 
     @classmethod
@@ -236,24 +241,49 @@ class ParrotFish(object, metaclass=ParrotFishHook):
         Environment.default_env()
 
     @classmethod
-    @hug.object.cli
     def get_env(cls):
         """ Gets the current environment of the session """
         return {
             "sessions"    : Session.sessions,
             "session_name": Session.session_name,
-            "root"         : Environment._root_location,
-            "category"    : ParrotFish.category
+            "root"        : Environment._root_location,
+            "category"    : cls.category
         }
+
+    @classmethod
+    @hug.object.cli
+    def get_info(cls):
+        info = {
+                "info":
+                {
+                    "current_session"    : Session.session_name,
+                    "available_sessions:": list(Session.sessions.keys()),
+                    "root"               : str(Environment.root),
+                    "category"           : cls.category,
+                    "install_location"   : str(DN.MODULE)
+                }
+            }
+        # logger.cli(format_json(info))
+
+    @classmethod
+    def dump_info(cls):
+        info = cls.get_info()
+        with open(Path(Environment.root, 'pfish.info'), 'w') as f:
+            json.dump(info, f, sort_keys=True, indent=4)
+        return info
+
+    @classmethod
+    def dump_env(cls):
+        env = cls.get_env()
+        with open(Environment.env, 'wb') as f:
+            dill.dump(env, f)
+            logger.verbose("environment dumped to {}".format(str(Environment.env)))
 
     @classmethod
     def save(cls):
         """ Pickes the session environment for next CLI """
-        env = cls.get_env()
-        with open(Environment.env, 'wb') as f:
-            dill.dump(env, f)
-            assert Environment.env.is_file()
-            logger.verbose("environment dumped to {}".format(str(f)))
+        cls.dump_info()
+        cls.dump_env()
 
     @classmethod
     def load(cls):

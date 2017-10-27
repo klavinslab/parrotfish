@@ -1,5 +1,4 @@
 import warnings
-from datetime import datetime
 from pathlib import Path
 
 import dill
@@ -8,6 +7,7 @@ from pydent import *
 from .diff import compare_content
 from .env_mng import Environment
 from .log import *
+from .utils import *
 
 logger = CustomLog.get_logger(__name__)
 
@@ -17,6 +17,38 @@ class CodeManager(object):
         self.category = category
         self.codes = {}
         self.load()
+
+    # TODO: merge with collect_code?
+    def get_code_parents(self, category=None):
+        parent_dict = {}
+        for parent_class_name, attr in CodeData.controller_dict.items():
+            code_parents = []
+            parent_class = AqBase.models[parent_class_name]
+            attr = CodeData.controller_dict[parent_class_name]
+            if category is None:
+                code_parents = parent_class.all()
+            else:
+                code_parents = parent_class.where({"category": str(category)})
+            parent_dict[parent_class_name] = code_parents
+        return parent_dict
+
+    def get_code_parents_by_category(self):
+        parent_dict = self.get_code_parents()
+        by_cat = {}
+        for parent_class_name, parents in parent_dict.items():
+            for code_parent in parents:
+                cat = code_parent.category
+                if cat not in by_cat:
+                    by_cat[cat] = []
+                by_cat[cat].append(code_parent)
+        return by_cat
+
+    def get_category_count(self):
+        by_cat = self.get_code_parents_by_category()
+        return {k: len(v) for k, v in by_cat.items()}
+
+    def get_categories(self):
+        return list(self.get_code_parents_by_category().keys())
 
     def add_code_metadata(self, code_meta):
         cat = code_meta.category
@@ -33,22 +65,19 @@ class CodeManager(object):
             with open(Environment.code_pickle, 'rb') as f:
                 self.codes = dill.load(f)
 
-    def collect_code(self):
-        controller_dict = {
-            Library.__name__      : "source",
-            OperationType.__name__: "protocol"
-        }
-
-        for parent_class_name, attr in controller_dict.items():
-            code_parents = []
-            parent_class = AqBase.models[parent_class_name]
-            attr = controller_dict[parent_class_name]
-            if self.category is None:
-                code_parents = parent_class.all()
+    def collect_code(self, category=None):
+        by_cat = self.get_code_parents_by_category()
+        categories = list(by_cat.keys())
+        if self.category is not None:
+            categories = [self.category]
+        for cat in categories:
+            if cat not in by_cat:
+                logger.error("category \"{}\" not found! {}".format(cat, list(by_cat.keys())))
             else:
-                code_parents = parent_class.where({"category": str(self.category)})
-            for cp in code_parents:
-                self.add_code_metadata(CodeData(attr, cp, save=True))
+                parents = by_cat[cat]
+                logger.cli("collecting category \"{}\" ({} protocols)".format(cat, len(parents)))
+                for p in parents:
+                    self.add_code_metadata(CodeData(p, save=True))
 
     # TODO: tag code when pushed with stamp
     # def tag_code(self):
@@ -86,22 +115,42 @@ class CodeManager(object):
 class CodeData(object):
     """ Container for code and its parent (OperationType, Library, etc.) """
 
-    def __init__(self, code_accessor, code_parent, save=False):
-        self.accessor = code_accessor
+    controller_dict = {
+        Library.__name__      : "source",
+        OperationType.__name__: "protocol"
+    }
+
+    def __init__(self, code_parent, save=False):
         self.parent = code_parent
-        self.code = code_parent.code(code_accessor)
-        self.name = code_parent.name
-        self.parent_class_name = code_parent.__class__.__name__
-        self.category = code_parent.category
+        self.code = code_parent.code(self.accessor)
         self.created_at = None
         if save:
-            self.save()
+            try:
+                self.save()
+            except:
+                logger.error("could not save code content for {}/{}".format(self.category, self.name))
+
+    @property
+    def accessor(self):
+        return CodeData.controller_dict[self.parent.__class__.__name__]
+
+    @property
+    def name(self):
+        return self.parent.name
+
+    @property
+    def category(self):
+        return self.parent.category
 
     def save(self):
         """ Save to designated filepath """
+        if self.code is None:
+            logger.error("could not find code content for {}/{}".format(self.category, self.name))
+            return None
         with open(self.filepath, 'w') as f:
             f.write(self.code.content)
             self.created_at = self.filepath.stat().st_mtime
+            return self.filepath
 
     @property
     def local_content(self):
@@ -121,9 +170,19 @@ class CodeData(object):
     @property
     def filepath(self):
         """ Expected filepath for this code """
-        catdir = Path(Environment.session_dir, self.category).resolve()
-        catdir.mkdir(exist_ok=True)
-        return Path(catdir, '{}.rb'.format(self.name))
+        # TODO: resolve paths with incorrect separators
+        name = self.name
+        cat = self.category
+        if sep in self.name:
+            name = sanitize_filename(self.name)
+            logger.warning("system seperator \"{}\" found in protocol name \"{}\". "
+                           "Sanitizing to \"{}\".".format(sep, self.name, name))
+        if sep in self.category:
+            cat = sanitize_filename(self.name)
+            logger.warning("system seperator \"{}\" found in category \"{}\"."
+                           " Sanitizing to \"{}\".".format(sep, self.category, cat))
+        catdir = Environment.category_dir(cat)
+        return Path(catdir, '{}.rb'.format(sanitize_filename(name)))
 
     @property
     def last_modified(self):

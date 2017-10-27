@@ -17,7 +17,9 @@ tests_require = [
 
 install_requires = [
     'pydent',
-    'hug'
+    'hug',
+    'dill',
+    'colorama',
 ]
 
 classifiers = [],

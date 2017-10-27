@@ -4,4 +4,3 @@ import pytest
 def test_paths():
 
     ParrotFish.category = "Justin"
-    print(ParrotFish.catdir)
