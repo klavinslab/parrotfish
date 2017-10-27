@@ -12,6 +12,9 @@ API = hug.API('parrotfish')
 
 # TODO: default dictionary gets deleted upon reset when environment is not found.
 # TODO: propery setup.py packaging
+# TODO: throw warning if root folders get moved or renamed (if root need to be rebuilt, log WARNING)
+# TODO: save session information in session_dir
+# TODO: add file in root folder to 'reconnect' with pfish whereever it is...
 
 class ParrotFishHook(type):
 
