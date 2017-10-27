@@ -1,10 +1,3 @@
-##########################################
-#
-# python pfish.py cmd *args **kwargs
-#
-##########################################
-
-
 from parrotfish import *
 
 if __name__ == '__main__':

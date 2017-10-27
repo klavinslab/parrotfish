@@ -284,6 +284,16 @@ class ParrotFish(object, metaclass=ParrotFishHook):
         """ Pickes the session environment for next CLI """
         cls.dump_info()
         cls.dump_env()
+        cls.dump_run_script()
+
+    @classmethod
+    def dump_run_script(cls):
+        filename = "pfish.py"
+        src = Path(DN.MODULE, filename).resolve()
+        dst = Path(Environment.root, filename).resolve()
+        if src.is_file():
+            logging.error("run script {} is missing".format(str(src)))
+        shutil.copy(str(src), str(dst))
 
     @classmethod
     def load(cls):
