@@ -3,5 +3,5 @@ import pytest
 
 def test_paths():
 
-    ParrotFishSession.category = "Justin"
-    print(ParrotFishSession.catdir)
+    ParrotFish.category = "Justin"
+    print(ParrotFish.catdir)

@@ -11,24 +11,23 @@ def test_checkout(register, config):
         assert Session.session_name == session_name
 
 def test_reset(config):
-    assert ParrotFishSession.state_pickle.exists()
-    assert ParrotFishSession.master.exists()
+    assert Environment.env.exists()
+    assert Environment.master_dir.exists()
 
     call_command("reset", force=True)
 
     assert Session.empty()
     assert Session.session is None
-    assert not ParrotFishSession.state_pickle.exists()
-    assert not list(list(ParrotFishSession.master.glob("*"))) == 0
+    assert not Environment.env.exists()
+    assert not list(list(Environment.master_dir.glob("*"))) == 0
 
 
 def test_fetch(register):
     call_command("checkout", "nursery")
     call_command("set_category", CATEGORY)
     call_command("fetch")
-    assert ParrotFishSession.catdir.is_dir()
-    assert len(list(ParrotFishSession.catdir.iterdir())) > 1
-    print(list(ParrotFishSession.catdir.iterdir()))
+    assert ParrotFish.catdir.is_dir()
+    assert len(list(ParrotFish.catdir.iterdir())) > 1
 
 def test_set_remote(register, session_environments):
     # initialize session with protocols
@@ -37,32 +36,35 @@ def test_set_remote(register, session_environments):
     call_command("fetch")
 
     # save old_bin and old_files
-    old_bin = ParrotFishSession.bin
-    old_files = list(ParrotFishSession.bin.glob("*"))
+    old_bin = Environment.root
+    old_files = list(Environment.root.glob("*"))
 
     # copy bin to new location and update .session/state.pkl
     new_bin_parent = session_environments[1]
     new_bin_name = "temp_bin"
-    call_command("set_remote", new_bin_parent, bin_name=new_bin_name)
-    new_bin = ParrotFishSession.bin
+    call_command("set_remote", new_bin_parent, root_name=new_bin_name)
+    new_bin = Environment.root
 
     # check to make sure bin path is as expected
-    assert ParrotFishSession.bin == new_bin
+    assert Environment.root == new_bin
 
     # check to make sure files transferred
     old_files = [p.relative_to(old_bin) for p in old_files]
-    new_files = [p.relative_to(ParrotFishSession.bin) for p in list(ParrotFishSession.bin.glob("*"))]
+    new_files = [p.relative_to(Environment.root) for p in list(Environment.root.glob("*"))]
     assert old_files == new_files
 
     # return bin to defaults
-    call_command("set_remote", old_bin)
-    new_files = [p.relative_to(ParrotFishSession.bin) for p in list(ParrotFishSession.bin.glob("*"))]
+    call_command("set_remote", old_bin.parent)
+    new_files = [p.relative_to(Environment.root) for p in list(Environment.root.glob("*"))]
     assert old_files == new_files
-    assert ParrotFishSession.bin == old_bin
+    assert Environment.root == old_bin
 
-def test_pull():
-    raise NotImplementedError()
+# def test_pull():
+#     raise NotImplementedError()
 
-def test_push():
-    raise NotImplementedError()
+def test_push_no_changes():
+    call_command("push")
+
+def test_push_changes():
+    call_command("push")
 

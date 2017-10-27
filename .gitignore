@@ -9,3 +9,5 @@ trident
 .sessions/state.pkl
 *.pkl
 /tests/session_environments/
+/.environ/
+/.cache/

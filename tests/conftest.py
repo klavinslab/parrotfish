@@ -1,7 +1,13 @@
 import pytest
 import os
 import json
-from parrotfish import *
+from parrotfish import ParrotFish, call_command
+from pathlib import Path
+
+@pytest.fixture(scope="module")
+def set_session_environment():
+    ParrotFish.set_verbose(True)
+    ParrotFish.set_env("test_env.pkl")
 
 @pytest.fixture(scope="module")
 def config_path():
@@ -18,22 +24,23 @@ def config():
 def sessions():
     c = config()
     for name, session in c.items():
-        ParrotFishSession.register(**session, session_name=name)
+        ParrotFish.register(**session, session_name=name)
 
 @pytest.fixture(scope="module")
 def session_environments():
     session_environment = Path(__file__).resolve().parent.joinpath('session_environments')
     session_environment.mkdir(exist_ok=True)
-    env1 = Path(session_environment, 'env1')
-    env2 = Path(session_environment, 'env2')
+    env1 = Path(session_environment, 'session1')
+    env2 = Path(session_environment, 'session2')
     env1.mkdir(exist_ok=True)
     env2.mkdir(exist_ok=True)
     return env1, env2
 
 @pytest.fixture(scope="module")
 def reset_all():
-    ParrotFishSession.reset(force=True)
-    ParrotFishSession.set_remote(session_environments()[0])
+    set_session_environment()
+    ParrotFish.reset(force=True)
+    ParrotFish.set_remote(session_environments()[0])
 
 @pytest.fixture(scope="function")
 def register(config):
@@ -43,3 +50,5 @@ def register(config):
         args = [session_config[x] for x in ["login", "password", "aquarium_url"]]
         call_command("register", *args, session_name=session_name)
         call_command("register", *args, session_name=session_name)
+
+set_session_environment()
