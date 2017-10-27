@@ -234,7 +234,7 @@ class ParrotFish(object, metaclass=ParrotFishHook):
     @classmethod
     def set_env(cls, name):
         Environment.set_env(name)
-        cls.load()
+        ParrotFish.save()
 
     @staticmethod
     def default_env(cls):
@@ -282,6 +282,8 @@ class ParrotFish(object, metaclass=ParrotFishHook):
     @classmethod
     def save(cls):
         """ Pickes the session environment for next CLI """
+        r = Environment.root
+        print("root: {}".format(Environment.root))
         cls.dump_info()
         cls.dump_env()
         cls.dump_run_script()
@@ -298,19 +300,26 @@ class ParrotFish(object, metaclass=ParrotFishHook):
     @classmethod
     def load(cls):
         """ Opens pickled session environment for CLI """
-        try:
-            env = dill.load(open(Environment.env, 'rb'))
-            Session.sessions = env["sessions"]
-            Session.set(env["session_name"])
-            ParrotFish.set_category(env["category"])
-            Environment.set_root(env["root"])
-            logger.verbose("environment loaded from {}".format(Environment.root))
-        except KeyError:
-            logger.warning("could not import session state from {}".format(Environment.env))
-        except FileNotFoundError:
-            pass
-        except PillowtalkSessionError:
-            pass
+        print(str(Environment.env))
+        if not Environment.env.is_file():
+            logger.warning("environment file {} not found".format(str(Environment.env)))
+            return None
+        env = dill.load(open(Environment.env, 'rb'))
+        session_name = env["session_name"]
+        Session.sessions = env["sessions"]
+        if session_name not in Session.sessions:
+            logger.warning("session {} not found in sessions {}".format(session_name, list(Session.sessions.keys())))
+        else:
+            Session.set(session_name)
+        Environment.set_root(env["root"])
+        ParrotFish.set_category(env["category"])
+        logger.verbose("environment loaded from {}".format(Environment.env))
+        # except KeyError:
+        #     logger.warning("could not import session state from {}".format(Environment.env))
+        # except FileNotFoundError:
+        #     logger.warning("could not import session state from {}".format(Environment.env))
+        # except PillowtalkSessionError:
+        #     logger.warning("could not import session state from {}".format(Environment.env))
 
 
 def call_command(command, *args, **kwargs):
