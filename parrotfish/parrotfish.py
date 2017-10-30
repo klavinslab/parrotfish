@@ -8,7 +8,7 @@ from .code_mng import *
 from .env_mng import *
 from .log import *
 
-logger = CustomLog.get_logger(__name__)
+logger = CustomLogging.get_logger(__name__)
 API = hug.API('parrotfish')
 
 
@@ -53,10 +53,10 @@ class ParrotFish(object, metaclass=ParrotFishHook):
     def set_verbose(cls, v):
         """ Turns verbose mode on or off """
         if v:
-            CustomLog.set_level(logging.VERBOSE)
+            CustomLogging.set_level(logging.VERBOSE)
             logger.cli("verbose ON")
         else:
-            CustomLog.set_level(logging.CLI)
+            CustomLogging.set_level(logging.CLI)
             logger.cli("verbose OFF")
 
     @classmethod

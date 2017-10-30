@@ -11,3 +11,4 @@ trident
 /tests/session_environments/
 /.environ/
 /.cache/
+*.xml

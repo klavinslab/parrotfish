@@ -1,6 +1,8 @@
 from pathlib import Path
 from pydent import Session
 import shutil
+import os
+
 
 # Globals
 class DN(object):
@@ -25,7 +27,9 @@ class EnvironmentManager(type):
 
     @property
     def root(cls):
-        return cls.build_path(cls._root_location)
+        root_path = Path(cls._root_location)
+        os.makedirs(root_path, exist_ok=True)
+        return root_path
 
     def copy_root(cls, new_path):
         if not new_path.exists():

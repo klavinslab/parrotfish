@@ -11,12 +11,8 @@ except ImportError:  # fallback so that the imported classes always exist
 logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.WARNING)
 
 
-class CustomLog(object):
+class CustomLogging(object):
     log_level = logging.WARNING
-    custom_levels = [
-        ["VERBOSE", 21, Fore.LIGHTMAGENTA_EX],
-        ["CLI", 29, Fore.BLUE]
-    ]
     children = []
 
     @staticmethod
@@ -45,10 +41,5 @@ class CustomLog(object):
         cls.children.append(logger)
         return logger
 
-    @classmethod
-    def install_custom_levels(cls):
-        for name, level, color in cls.custom_levels:
-            cls.add_log_function(name, level, color=color)
-
-
-CustomLog.install_custom_levels()
+CustomLogging.add_log_function("VERBOSE", 21, color=Fore.LIGHTMAGENTA_EX)
+CustomLogging.add_log_function("CLI", 29, color=Fore.BLUE)

@@ -9,7 +9,7 @@ from .env_mng import Environment
 from .log import *
 from .utils import *
 
-logger = CustomLog.get_logger(__name__)
+logger = CustomLogging.get_logger(__name__)
 
 
 class CodeManager(object):
