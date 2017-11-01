@@ -4,3 +4,5 @@ bin/meta
 protocols
 __pycache__
 trident
+
+.vscode
