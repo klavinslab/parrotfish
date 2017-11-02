@@ -156,10 +156,27 @@ class ParrotFish(object):
 
     @classmethod
     @hug.object.cli
+    def set(cls, session_name: hug.types.text, category: hug.types.text):
+        cls.set_session(session_name)
+        cls.set_category(category)
+
+    @classmethod
+    def sessions_json(cls):
+        d = {}
+        for k, v in Environment().session.sessions.items():
+            v = str(v)
+            if v is Environment().session.session:
+                v = "**" + str(v) + "**"
+            d[k] = v
+        return d
+
+    @classmethod
+    @hug.object.cli
     def state(cls):
+        """ Get the current environment state. """
         logger.cli(format_json({
-            "session": str(Environment().session.session),
-            "sessions": ', '.join(Environment().session.sessions.keys()),
+            "session": "{}: {}".format(Environment().session.session_name, str(Environment().session.session)),
+            "sessions": cls.sessions_json(),
             "category": Environment().category,
             "repo": str(Environment().repo.abspath)
         }))
@@ -196,7 +213,7 @@ class ParrotFish(object):
     def sessions(cls):
         """ List the current avilable sessions """
         sessions = Environment().session.sessions
-        logger.cli(format_json({n: str(s) for n, s in sessions.items()}))
+        logger.cli(format_json(cls.sessions_json()))
         return sessions
 
     @classmethod

@@ -14,134 +14,111 @@ Branch | Build | Coverage
 
 Code and manage your Aquarium protocols and libraries through your IDE
 
-# Version/Status
+## Version/Status
 
 Code and ideas were taken from Garrett Newman. This branch is rebranding the interface
 and packaging to be more convenient for other users to adopt.
 
 Note that this version requires the new version of Trident that utilizes Pillowtalk.
 
-# Installation
+## Installation
+
+### Requirements
+
+* install this version of [trident](https://github.com/klavinslab/trident/tree/feature-pillowtalk-apiwrapper)
+    * cd to trident directory
+    * run `pip install .`
 ```
+
+cd to/directory/parrotfish
 pip install parrotfish
 ```
 
-# Usage
+## Usage
 
-There are two ways to use parrotfish. The first is by the command line interface, which
-allows you to build up bash-like scripts for development. The second is through a python interpreter.
-
-## Command Line Interface (CLI)
-
-Using parrotfish through the CLI is easy. The following commands are exposed through the
-CLI: `register`, `pull`, `checkout`, `push`, `fetch`, `set_category`, `reset``.
-
-### help
-
-To list the available commands, type:
-```bash
-python parrotfish.py --help
-```
-```
->>> Available Commands:
-
-        - checkout
-        - clear
-        - fetch
-        - push
-        - register
-        - reset
-        - set_category
-```
-
-To get help with any particular command, type something like:
-```bash
-python parrotfish.py register -h
-```
-which will display a information of the arguments
-
-#### CLI usage
-
-A typical parrotfish session may look like:
+Once installed, the command line interface is automatically exposed. Take a look at the available
+commands by typing
 
 ```bash
-# register a new sessions
-python parrotfish.py register jjohn mypassword 165.13.2.2131 nursery
-
-# set the OperationType category
-python parrotfish.py set_category mycategory
-
-# checkout nursery session
-python parrotfish.py checkout nursery
-
-# fetch code from nursery server
-python parrotfish.py fetch
+pfish
 ```
 
-##### Registration
-
-When you call `register user pass usr session_name`, parrotfish will create a new folder in
- the bin/protocols/session_name. Fetching protocols will pull protocols from Aquarium to that folder while
- you are still checkingout that session.
-
-Registration will also save the session states in a pickle file located in the bin folder. This means that
-after registration *it is unnecessary to re-register your session.* Parrotfish will automatically reload your last
-session. This is a necessary feature in order to be able to chain CLI commands together into a meaningful script.
-
-To remove files or sessions, you can use the `clear` or `reset` command. You can clear a particular category of
-protocols from your local machine. Note the optional `force=True` argument. When this is not present, parrotfish will
-prompt you to confirm the deletion of the protocols.
+### Logging in
 
 ```bash
-python parrotfish.py checkout mysession
-python parrotfish.py set_category mycategory
-python parrotfish.py clear force=True
+pfish register <username> <password> <aquarium_url> <session_name>
 ```
 
-To remove *all files and sessions*, you use the `reset` command, which will remove the pickled session_state file
-and **all** protocols in **all** categories.
-```bash
-python parrotfish.py reset force=True
-```
+### Managing environment
 
-##### Switching sessions
-
-You can switch sessions using the `checkout` command:
+List current environment state by:
 
 ```bash
-python parrotfish.py checkout production
-
-# do production server stuff here
+pfish state
 ```
 
-You can change the category your checking out using the `set_category` command.
+Set your session by name:
+
 ```bash
-python parrotfish.py set_category mycategory
+pfish set_session <session_name>
 ```
 
-##### fetch
-coming soon...
+Set your current category ("all" for all categories):
 
-##### push
-coming soon...
+```bash
+pfish set_category <category_name>
+```
 
-##### push
-coming soon...
+List available categories on the server:
 
-##### pull
-coming soon...
+```bash
+pfish categories
+```
 
-### Python usage
+### Managing code
 
-Python commands directly mirror the CLI commands. All methods
-return the ParrotFish class and so can be chained together easily into one-liners
-```python
-from parrotfish import *
+Listing repo location:
 
-# load from previous registration
-ParrotFish.load()
-ParrotFish.checkout("nursery").set_category("cloning").fetch()
+```bash
+pfish repo
+```
 
-# or using the checkout shortcut
-ParrotFish.nursery.set_category("cloning").fetch()
+Moving your repo:
+
+```bash
+pfish move_repo <path_to_new_location>
+```
+
+Get code for current session and category:
+
+```bash
+pfish fetch
+```
+
+Push code for current session and category:
+
+```bash
+pfish push
+```
+
+## Setting up scripts
+
+A fetch script may look like
+
+```bash
+#!/usr/bin/env bash
+
+pfish set_session nursery
+pfish set_category Cloning
+pfish fetch
+```
+
+A push script may look like:
+
+```bash
+#!/usr/bin/env bash
+
+pfish set_session nursery
+pfish set_category Cloning
+pfish push
 ```
