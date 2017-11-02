@@ -3,8 +3,8 @@ import os
 import dill
 from magicdir import *
 from pydent import AqSession
-
-from parrotfish.utils.log import *
+from .utils.log import *
+from parrotfish.utils.utils import *
 
 logger = CustomLogging.get_logger(__name__)
 
@@ -24,7 +24,7 @@ class Environment(object):
             self.session = AqSession()
 
     def pkg_dir(self):
-        return Path(__file__).parent.parent.absolute()
+        return Path(__file__).parent.absolute()
 
     def session_dir(self):
         return self.repo.protocols.add(self.session.session_name, push_up=False, make_attr=False)
@@ -52,8 +52,13 @@ class Environment(object):
             dill.dump(self, f)
 
     def load(self):
-        with open(self.env_pkl(), 'rb') as f:
-            dill.load(f)
+        e = Path(self.pkg_dir(), '.environ')
+        os.makedirs(e, exist_ok=True)
+        print(e.absolute())
+        if self.env_pkl().is_file():
+            with open(self.env_pkl(), 'rb') as f:
+                dill.load(f)
+
 
     def use_all_categories(self):
         return self.category is None or \

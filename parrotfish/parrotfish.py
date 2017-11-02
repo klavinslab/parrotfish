@@ -34,19 +34,21 @@ class ParrotFish(object):
 
         for c in code_files:
             if cls.ok_to_push(c):
-                # c.update()
-                pass
+                c.code.content = c.read('r')
+                c.code.update()
+                # pass
         cls.save()
 
     @classmethod
     def fetch_parent_from_server(cls, code_file):
         code_parent = code_file.code_parent
 
-        aq_code_parents = code_parent.__class__.where({"id": code_parent.id})
+        id_ = {"id": code_parent.id}
+        aq_code_parents = code_parent.__class__.where(id_)
         if aq_code_parents is None or aq_code_parents == []:
-            logger.warning("Could not find {} with {}".format(code_parent.__name__, iden))
+            logger.warning("Could not find {} with {}".format(code_parent.__name__, id_))
         elif len(aq_code_parents) > 1:
-            logger.warning("More than one {} found with {}".format(code_parent.__name__, iden))
+            logger.warning("More than one {} found with {}".format(code_parent.__name__, id_))
         else:
             return aq_code_parents[0]
 
@@ -67,10 +69,10 @@ class ParrotFish(object):
     @classmethod
     def ok_to_push(cls, code_file):
         # Check last modified
-        modified_at = code_file.abspath.stat().st_mtime
-        if code_file.created_at == modified_at:
-            logger.verbose("File has not been modified")
-            return False
+        # modified_at = code_file.abspath.stat().st_mtime
+        # if code_file.created_at == modified_at:
+        #     logger.verbose("File has not been modified")
+        #     return False
         fetched_content = code_file.code.content
 
         # Check local changes
@@ -148,6 +150,16 @@ class ParrotFish(object):
         logger.cli("Setting session to \"{}\"".format(session_name))
         Environment().session.set(session_name)
         cls.save()
+
+    @classmethod
+    @hug.object.cli
+    def state(cls):
+        logger.cli(format_json({
+            "session": str(Environment().session.session),
+            "sessions": ', '.join(Environment().session.sessions.keys()),
+            "category": Environment().category,
+            "repo": str(Environment().repo.abspath)
+        }))
 
     # @classmethod
     # @hug.object.cli

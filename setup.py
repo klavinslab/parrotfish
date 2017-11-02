@@ -45,7 +45,10 @@ def get_version():
 setup(
         name=__package__,
         version=get_version(),
-        packages=[__package__],
+        packages=[__package__, "parrotfish.utils"],
+        package_data={
+            'parrotfish': ['.environ']
+        },
         url='https://github.com/klavinslab/parrotfish',
         license=__license__,
         author=__author__,

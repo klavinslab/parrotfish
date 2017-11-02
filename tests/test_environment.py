@@ -15,7 +15,7 @@ def test_env_pkl_path():
 
     env = Environment()
 
-    this_dir = Path(Path(__file__).absolute().parent.parent, '.environ')
+    this_dir = Path(Path(__file__).absolute().parent.parent, 'parrotfish', '.environ')
     assert env.env_pkl().parent == this_dir
 
 def test_env_paths(sessions, reset):
@@ -63,7 +63,7 @@ def test_env_save_and_load(config):
 
     # remove env_pkl
     pkg_dir = Path(__file__).absolute().parent.parent
-    env = Path(pkg_dir, '.environ', Environment().environment_name)
+    env = Path(pkg_dir, 'parrotfish', '.environ', Environment().environment_name)
     if env.is_file():
         os.remove(env)
     assert not env.is_file()
