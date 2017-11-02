@@ -1,9 +1,9 @@
 import hug
 from pydent import *
 
+from parrotfish.utils.utils import *
+from parrotfish.utils.diff import *
 from .environment import *
-from .utils import *
-from .diff import *
 
 logger = CustomLogging.get_logger(__name__)
 API = hug.API('parrotfish')
@@ -148,7 +148,7 @@ class ParrotFish(object):
         logger.cli("Setting session to \"{}\"".format(session_name))
         Environment().session.set(session_name)
         cls.save()
-        
+
     # @classmethod
     # @hug.object.cli
     # def set_repo(cls, path: hug.types.text):

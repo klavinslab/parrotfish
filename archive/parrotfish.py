@@ -5,7 +5,7 @@
 import hug
 
 from archive.code_mng import *
-from parrotfish.log import *
+from parrotfish.utils.log import *
 
 logger = CustomLogging.get_logger(__name__)
 API = hug.API('parrotfish')

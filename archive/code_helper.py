@@ -1,5 +1,6 @@
-from parrotfish.log import *
 from pydent import *
+
+from parrotfish.utils.log import *
 
 logger = CustomLogging.get_logger(__name__)
 

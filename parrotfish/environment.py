@@ -1,9 +1,10 @@
-from pydent import AqSession
-from .utils import *
-from magicdir import *
-import dill
-from .log import *
 import os
+
+import dill
+from magicdir import *
+from pydent import AqSession
+
+from parrotfish.utils.log import *
 
 logger = CustomLogging.get_logger(__name__)
 

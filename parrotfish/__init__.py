@@ -1,5 +1,5 @@
 __version__ = "0.2a"
 
-from .parrotfish import *
+from parrotfish.utils.log import *
 from .environment import *
-from .log import *
+from .parrotfish import *
