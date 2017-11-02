@@ -79,14 +79,17 @@ class ParrotFish(object):
         local_content = code_file.read('r')
         local_changes = compare_content(local_content, fetched_content)
         if not local_changes:
-            logger.verbose("There are not local changes.")
+            logger.verbose("<{}/{}> there are no local changes.".format(code_file.code_parent.category,
+                                                                        code_file.code_parent.name))
             return False
 
         # Check server changes
         server_content = cls.fetch_content(cls.fetch_parent_from_server(code_file))
         server_changes = compare_content(local_content, server_content)
         if not server_changes:
-            logger.verbose("There are not differences between local and server.")
+            logger.verbose("<{}/{}> there are not differences between local and server.".format(
+                    code_file.code_parent.category,
+                    code_file.code_parent.name))
             return False
         return True
 
