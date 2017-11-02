@@ -4,10 +4,10 @@ from pathlib import Path
 import dill
 from pydent import *
 
-from .diff import compare_content
-from .env_mng import Environment
-from .log import *
-from .utils import *
+from parrotfish.diff import compare_content
+# from .env_mng import Environment
+from parrotfish.log import *
+from parrotfish.utils import *
 
 logger = CustomLogging.get_logger(__name__)
 

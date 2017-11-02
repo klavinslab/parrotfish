@@ -1,13 +1,11 @@
 import pytest
 import os
 import json
-from parrotfish import ParrotFish, call_command
-from pathlib import Path
+from parrotfish import *
 
 @pytest.fixture(scope="module")
 def set_session_environment():
-    ParrotFish.set_verbose(True)
-    ParrotFish.set_env("test_env.pkl")
+    ParrotFish
 
 @pytest.fixture(scope="module")
 def config_path():
@@ -26,29 +24,19 @@ def sessions():
     for name, session in c.items():
         ParrotFish.register(**session, session_name=name)
 
-@pytest.fixture(scope="module")
-def session_environments():
-    session_environment = Path(__file__).resolve().parent.joinpath('session_environments')
-    session_environment.mkdir(exist_ok=True)
-    env1 = Path(session_environment, 'session1')
-    env2 = Path(session_environment, 'session2')
-    env1.mkdir(exist_ok=True)
-    env2.mkdir(exist_ok=True)
-    return env1, env2
-
-@pytest.fixture(scope="module")
-def reset_all():
-    set_session_environment()
-    ParrotFish.reset(force=True)
-    ParrotFish.set_remote(session_environments()[0])
-
 @pytest.fixture(scope="function")
-def register(config):
-    reset_all()
-    call_command("reset", force=True)
-    for session_name, session_config in config.items():
-        args = [session_config[x] for x in ["login", "password", "aquarium_url"]]
-        call_command("register", *args, session_name=session_name)
-        call_command("register", *args, session_name=session_name)
+def reset():
+    CustomLogging.set_level(logging.VERBOSE)
+    Environment().environment_name = "test_env.pkl"
+    if Environment().env_pkl().is_file():
+        os.remove(Environment().env_pkl().absolute())
+    ParrotFish.set_category("ParrotFishTest")
 
-set_session_environment()
+    environments_dir = Path(Path(__file__).parent, 'environments').absolute()
+
+    Environment().repo.set_dir(environments_dir)
+    Environment().repo.rmdirs()
+    Environment().save()
+
+####### Setup test environment #######
+reset()
