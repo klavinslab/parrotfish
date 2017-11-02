@@ -24,19 +24,32 @@ def sessions():
     for name, session in c.items():
         ParrotFish.register(**session, session_name=name)
 
+@pytest.fixture(scope="session")
+def testing_environments():
+    environments_dir = Path(Path(__file__).parent, 'environments').absolute()
+    env1 = Path(environments_dir, 'env1')
+    if not env1.is_dir():
+        os.mkdir(str(env1))
+    env2 = Path(environments_dir, 'env2')
+    if not env2.is_dir():
+        os.mkdir(str(env2))
+
+    return env1, env2
 @pytest.fixture(scope="function")
 def reset():
-    CustomLogging.set_level(logging.VERBOSE)
-    Environment().environment_name = "test_env.pkl"
-    if Environment().env_pkl().is_file():
-        os.remove(Environment().env_pkl().absolute())
-    ParrotFish.set_category("ParrotFishTest")
+    def wrapped():
+        CustomLogging.set_level(logging.VERBOSE)
+        Environment().environment_name = "test_env.pkl"
+        if Environment().env_pkl().is_file():
+            os.remove(Environment().env_pkl().absolute())
+        ParrotFish.set_category("ParrotFishTest")
 
-    environments_dir = Path(Path(__file__).parent, 'environments').absolute()
-
-    Environment().repo.set_dir(environments_dir)
-    Environment().repo.rmdirs()
-    Environment().save()
+        environments_dir = Path(Path(__file__).parent, 'environments').absolute()
+        env1, env2 = testing_environments()
+        Environment().repo.set_dir(env1)
+        Environment().repo.rmdirs()
+        Environment().save()
+    return wrapped
 
 ####### Setup test environment #######
-reset()
+reset()()

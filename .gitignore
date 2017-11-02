@@ -12,3 +12,7 @@ trident
 /.environ/
 /.cache/
 *.xml
+/parrotfish.egg-info/
+/examples/setting_sessions.sh
+/examples/registering.sh
+/examples/

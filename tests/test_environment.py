@@ -18,7 +18,7 @@ def test_env_pkl_path():
     this_dir = Path(Path(__file__).absolute().parent.parent, '.environ')
     assert env.env_pkl().parent == this_dir
 
-def test_env_paths(sessions):
+def test_env_paths(sessions, reset):
 
     env = Environment()
 
@@ -39,7 +39,7 @@ def test_env_paths(sessions):
     assert env.session_dir().relpath == Path(env.repo.name, 'protocols', 'production')
     assert env.get_category('cat1').abspath == Path(new_dir, env.repo.name, 'protocols', 'production', 'cat1')
     assert env.get_category('cat2').abspath == Path(new_dir, env.repo.name, 'protocols', 'production', 'cat2')
-
+    reset()
 
 # # TODO: better info test
 # def test_env_info(sessions):
