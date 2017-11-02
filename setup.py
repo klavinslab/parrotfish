@@ -19,6 +19,7 @@ install_requires = [
     'pydent',
     'hug',
     'dill',
+    'magicdir',
     'colorama',
 ]
 
