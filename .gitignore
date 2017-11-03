@@ -4,8 +4,7 @@ bin/meta
 protocols
 __pycache__
 trident
-/parrotfish/config.json
-/tests/secrets/config.json
+**/config.json
 .sessions/state.pkl
 *.pkl
 /tests/session_environments/
@@ -16,3 +15,5 @@ trident
 /examples/setting_sessions.sh
 /examples/registering.sh
 /examples/
+
+.vscode
