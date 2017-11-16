@@ -1,12 +1,16 @@
-from parrotfish import *
-import pytest
+import os
+import shutil
 import uuid
+
+from parrotfish import *
+
 
 def test_fetch(sessions):
     ParrotFish.set_category("ParrotFishTest")
     ParrotFish.fetch()
     library = Environment().get_category("ParrotFishTest").get("Library1.rb")
     assert library.exists()
+
 
 def test_push(sessions):
     ParrotFish.set_category("ParrotFishTest")
@@ -26,6 +30,7 @@ def test_push(sessions):
     assert tag in library.read('r')
 
     # ParrotFish.push()
+
 
 def test_mv(sessions, testing_environments):
     env1, env2 = testing_environments

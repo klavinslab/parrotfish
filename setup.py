@@ -26,43 +26,51 @@ install_requires = [
 classifiers = [],
 
 # setup functions
+
+
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
+
 def get_property(prop, project):
-    result = re.search(r'{}\s*=\s*[\'"]([^\'"]*)[\'"]'.format(prop), open(project + '/__init__.py').read())
+    result = re.search(
+        r'{}\s*=\s*[\'"]([^\'"]*)[\'"]'.format(prop), open(project + '/__init__.py').read())
     if result:
         return result.group(1)
     else:
-        raise RuntimeError("Unable to find property {0} in project \"{1}\".".format(prop, project))
+        raise RuntimeError(
+            "Unable to find property {0} in project \"{1}\".".format(prop, project))
+
 
 def get_version():
     try:
         return get_property("__version__", __package__)
     except RuntimeError as e:
-        raise RuntimeError("Unable to find __version__ string in project \"{0}\"".format(__package__))
+        raise RuntimeError(
+            "Unable to find __version__ string in project \"{0}\"".format(__package__))
+
 
 # setup
 setup(
-        name=__package__,
-        version=get_version(),
-        packages=[__package__, "parrotfish.utils"],
-        package_data={
-            'parrotfish': ['.environ']
-        },
-        url='https://github.com/klavinslab/parrotfish',
-        license=__license__,
-        author=__author__,
-        author_email='',
-        keywords='',
-        description='',
-        long_description=read(__readme__),
-        install_requires=install_requires,
-        python_requires='>=3.4',
-        tests_require=tests_require,
-        entry_points={
-            'console_scripts': [
+    name=__package__,
+    version=get_version(),
+    packages=[__package__, "parrotfish.utils"],
+    package_data={
+        'parrotfish': ['.environ']
+    },
+    url='https://github.com/klavinslab/parrotfish',
+    license=__license__,
+    author=__author__,
+    author_email='',
+    keywords='',
+    description='',
+    long_description=read(__readme__),
+    install_requires=install_requires,
+    python_requires='>=3.4',
+    tests_require=tests_require,
+    entry_points={
+        'console_scripts': [
                 'pfish = parrotfish.parrotfish:main'
-            ],
-        }
+        ],
+    }
 )

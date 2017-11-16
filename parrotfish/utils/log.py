@@ -5,7 +5,7 @@ try:
     init()
 except ImportError:  # fallback so that the imported classes always exist
     class ColorFallback():
-        __getattr__ = lambda self, name: ''
+        def __getattr__(self, name): return ''
     Fore = Back = Style = ColorFallback()
 
 logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.WARNING)
@@ -40,6 +40,7 @@ class CustomLogging(object):
         logger.setLevel(cls.log_level)
         cls.children.append(logger)
         return logger
+
 
 CustomLogging.add_log_function("VERBOSE", 21, color=Fore.LIGHTMAGENTA_EX)
 CustomLogging.add_log_function("CLI", 29, color=Fore.BLUE)

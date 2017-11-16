@@ -6,8 +6,9 @@ try:
     init()
 except ImportError:  # fallback so that the imported classes always exist
     class ColorFallback():
-        __getattr__ = lambda self, name: ''
+        def __getattr__(self, name): return ''
     Fore = Back = Style = ColorFallback()
+
 
 def color_diff(diff):
     for line in diff:
@@ -21,6 +22,7 @@ def color_diff(diff):
             yield Fore.CYAN + line + Fore.RESET
         else:
             yield line
+
 
 def compare_content(content1, content2):
     lines1 = content1.split('\n')
