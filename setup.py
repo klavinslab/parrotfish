@@ -4,7 +4,7 @@ from distutils.core import setup
 
 # about
 __author__ = 'Garrett Newman, Justin Vrana'
-__license__ = '?'
+__license__ = ''
 __package__ = "parrotfish"
 __readme__ = "README"
 
@@ -70,7 +70,7 @@ setup(
     tests_require=tests_require,
     entry_points={
         'console_scripts': [
-                'pfish = parrotfish.parrotfish:main'
+                'pfish = parrotfish.parrotfish:run_pfish'
         ],
     }
 )

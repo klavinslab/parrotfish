@@ -8,12 +8,58 @@ import inflection
 from os import sep
 from pydent.models import OperationType, Library
 
+import hug
+from prompt_toolkit.shortcuts import prompt, confirm
+from prompt_toolkit.contrib.completers import WordCompleter
+import re
+from prompt_toolkit import prompt
+from prompt_toolkit.styles import style_from_dict
+from prompt_toolkit.token import Token
+import os
+
+
 logger = CustomLogging.get_logger(__name__)
 API = hug.API('parrotfish')
 
 # Aliases
 Env = Environment()
 SM = Env.session_manager
+
+
+example_style = style_from_dict({
+    # User input.
+    Token:          '#ff0066',
+
+    # Prompt.
+    Token.Username: '#884444 italic',
+    Token.At:       '#00aa00',
+    Token.Colon:    '#00aa00',
+    Token.Pound:    '#00aa00',
+    Token.Host:     '#000088 bg:#aaaaff',
+    Token.Path:     '#884444 underline',
+
+    # Make a selection reverse/underlined.
+    # (Use Control-Space to select.)
+    Token.SelectedText: 'reverse underline',
+})
+
+
+def get_prompt_tokens(cli):
+    login = '<not logged in>'
+    url = '<???>'
+
+    if SM.current:
+        login = SM.current.login
+        url = SM.current.url
+
+    return [
+        (Token.Username, login),
+        (Token.At,       '@'),
+        (Token.Host,     url),
+        (Token.Colon,    ':'),
+        (Token.Pound,    '#{} '.format(Env.category)),
+    ]
+
 
 
 @hug.object(name='parrotfish', version='1.0.0', api=API)
@@ -317,6 +363,44 @@ class ParrotFish(object):
         else:
             logger.cli("Session {} does not exist".format(name))
         cls.save()
+
+    @hug.object.cli
+    def clear_history(self):
+        env_pkl = Env.env_pkl()
+        if env_pkl.exists():
+            os.remove(env_pkl)
+        logger.cli("Cleared history")
+
+
+
+    @hug.object.cli
+    def exit(self, interactive=True):
+        return -1
+
+    def command_completer(self):
+        return WordCompleter(list(API.cli.commands.keys()))
+
+    @hug.object.cli
+    def interactive(self):
+        print("Entering interactive")
+        res = 1
+        while not res == -1:
+            answer = prompt(completer=self.command_completer(),
+                            get_prompt_tokens=get_prompt_tokens,
+                            style=example_style)
+            args = re.split('\s+', answer)
+            fxn_name = args[0]
+            args = args[1:]
+            if fxn_name in API.cli.commands:
+                fxn = getattr(self, fxn_name)
+                res = fxn(*args, interactive=True)
+            elif fxn_name == '-h' or fxn_name == '--h':
+                print(API._cli)
+            else:
+                print("Cmd {} not found. Use '-h' or '--help' for help. Click tab for available cmds.".format(fxn_name))
+
+        print("goodbye!")
+
 
 # TODO: if Parrotfish is updated, make sure there is a way to delete the old environment if somekind of error occurs
 
