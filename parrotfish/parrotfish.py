@@ -380,6 +380,9 @@ class ParrotFish(object):
     def command_completer(self):
         return WordCompleter(list(API.cli.commands.keys()))
 
+
+    # TODO: create interactive wrapper for sending parameters to other commands
+    # TODO: word completer for specific commands
     @hug.object.cli
     def interactive(self):
         print("Entering interactive")
