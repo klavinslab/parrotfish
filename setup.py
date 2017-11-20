@@ -20,7 +20,7 @@ install_requires = [
     'hug',
     'dill',
     'magicdir',
-    'colorama',
+    'colorama', 'prompt_toolkit',
 ]
 
 classifiers = [],

@@ -1,22 +1,21 @@
+import itertools
+import os
+import re
+from functools import wraps
+from os import sep
+from pathlib import Path
+
 import hug
+import inflection
 from hug import API
 from parrotfish.environment import Environment
 from parrotfish.utils import compare_content, CustomLogging, logging, format_json, sanitize_filename
-from requests.exceptions import InvalidSchema
-from pathlib import Path
-import inflection
-from os import sep
-from pydent.models import OperationType, Library
-
-import hug
-from prompt_toolkit.shortcuts import prompt, confirm
-from prompt_toolkit.contrib.completers import WordCompleter
-import re
 from prompt_toolkit import prompt
+from prompt_toolkit.contrib.completers import WordCompleter, PathCompleter
 from prompt_toolkit.styles import style_from_dict
 from prompt_toolkit.token import Token
-import os
-
+from pydent.models import OperationType, Library
+from requests.exceptions import InvalidSchema
 
 logger = CustomLogging.get_logger(__name__)
 API = hug.API('parrotfish')
@@ -24,23 +23,24 @@ API = hug.API('parrotfish')
 # Aliases
 Env = Environment()
 SM = Env.session_manager
+EXIT = -1
 
-
-example_style = style_from_dict({
+prompt_style = style_from_dict({
     # User input.
-    Token:          '#ff0066',
+    Token: '#ff0066',
 
     # Prompt.
     Token.Username: '#884444 italic',
-    Token.At:       '#00aa00',
-    Token.Colon:    '#00aa00',
-    Token.Pound:    '#00aa00',
-    Token.Host:     '#000088 bg:#aaaaff',
-    Token.Path:     '#884444 underline',
+    Token.At: '#00aa00',
+    Token.Colon: '#00aa00',
+    Token.Pound: '#00aa00',
+    Token.Host: '#000088 bg:#aaaaff',
+    Token.Path: '#884444 underline',
 
     # Make a selection reverse/underlined.
     # (Use Control-Space to select.)
     Token.SelectedText: 'reverse underline',
+    Token.Toolbar: '#ffffff bg:#333333',
 })
 
 
@@ -54,12 +54,70 @@ def get_prompt_tokens(cli):
 
     return [
         (Token.Username, login),
-        (Token.At,       '@'),
-        (Token.Host,     url),
-        (Token.Colon,    ':'),
-        (Token.Pound,    '#{} '.format(Env.category)),
+        (Token.At, '@'),
+        (Token.Host, url),
+        (Token.Colon, ':'),
+        (Token.Pound, '{}'.format(SM.session_name)),
+        (Token.Pound, '#{} '.format(Env.category)),
     ]
 
+
+def connect(func_name):
+    """
+    Sends results of the wrapped function to another function.
+
+    Example Usage:
+
+    .. code-block:: python
+
+        class MyKlass(object):
+
+            def hello(self, name):
+                print(name)
+
+            @connect("hello")
+            def foo(self):
+                return "John"
+
+    """
+
+    def wrapped(func):
+        @wraps(func)
+        def double_wrapped(*args, **kwargs):
+            instance = args[0]
+            klass = instance.__class__
+            connected_func = getattr(klass, func_name)
+            func_args, func_kwargs = func(*args, **kwargs)
+            return connected_func(instance, *func_args, **func_kwargs)
+
+        return double_wrapped
+
+    return wrapped
+
+
+class CustomCompleter(WordCompleter):
+    """
+    Matches commands only at current text position.
+    """
+
+    def __init__(self, words, ignore_case=False, meta_dict=None, match_middle=False):
+        super().__init__(words, ignore_case=ignore_case, WORD=False, meta_dict=meta_dict, sentence=True,
+                         match_middle=match_middle)
+
+    def get_completions(self, document, complete_event):
+        """Override completion method that retrieves only completions whose length less than or equal
+        to the current completion text. This eliminates excessivlely long completion lists"""
+
+        get_words = lambda text: re.split('\s+', text)
+        completions = list(super().get_completions(document, complete_event))
+
+        # filter completions by length of word
+        text_before_cursor = document.text_before_cursor
+        words_before_cursor = get_words(text_before_cursor)
+        for c in completions:
+            cwords = get_words(c.text)
+            if len(cwords) <= len(words_before_cursor):
+                yield c
 
 
 @hug.object(name='parrotfish', version='1.0.0', api=API)
@@ -107,11 +165,6 @@ class ParrotFish(object):
                 c.code.update()
                 # pass
         cls.save()
-
-
-    ############################
-    #####  Code Managment  #####
-    ############################
 
     @classmethod
     def fetch_parent_from_server(cls, code_file):
@@ -184,6 +237,24 @@ class ParrotFish(object):
         code_files = [f for f in files if hasattr(f, 'code_parent')]
         return code_files
 
+    @classmethod
+    def sessions_json(cls):
+        sess_dict = {}
+        for key, val in SM.sessions.items():
+            val = str(val)
+            if val is SM.current:
+                val = "**" + str(val) + "**"
+            sess_dict[key] = val
+        return sess_dict
+
+    @classmethod
+    def get_categories(cls):
+        categories = {}
+        for controller, _ in cls.controllers:
+            all_models = SM.current.model_interface(controller.__name__).all()
+            for m in all_models:
+                categories.setdefault(m.category, []).append(m)
+        return categories
 
     @classmethod
     @hug.object.cli
@@ -230,16 +301,6 @@ class ParrotFish(object):
                     code_file.code_parent = m
                     code_file.created_at = code_file.abspath.stat().st_mtime
         cls.save()
-
-    @classmethod
-    def sessions_json(cls):
-        sess_dict = {}
-        for key, val in SM.sessions.items():
-            val = str(val)
-            if val is SM.current:
-                val = "**" + str(val) + "**"
-            sess_dict[key] = val
-        return sess_dict
 
     @classmethod
     @hug.object.cli
@@ -294,10 +355,7 @@ class ParrotFish(object):
         """ Get all available categories and count """
         cls.check_for_session()
         logger.cli("Getting category counts:")
-        categories = {}
-        for controller, _ in cls.controllers:
-            for m in controller.all():
-                categories.setdefault(m.category, []).append(m)
+        categories = cls.get_categories()
         category_count = {k: len(v) for k, v in categories.items()}
         logger.cli(format_json(category_count))
 
@@ -312,7 +370,7 @@ class ParrotFish(object):
                                                                                               ''.join(sessions.keys())))
 
         logger.cli("Setting session to \"{}\"".format(session_name))
-        SM.set(session_name)
+        SM.set_current(session_name)
         cls.save()
 
     @classmethod
@@ -321,7 +379,6 @@ class ParrotFish(object):
         """Sets the session and category"""
         cls.set_session(session_name)
         cls.set_category(category)
-
 
     @classmethod
     @hug.object.cli
@@ -332,7 +389,7 @@ class ParrotFish(object):
             raise Exception("Path {} does not exist".format(str(path)))
         logger.cli("Moving repo location from {} to {}".format(
             Env.repo.abspath, path))
-        Env.repo.mvdirs(path)
+        Env.move_repo(path)
         cls.save()
 
     @classmethod
@@ -371,46 +428,84 @@ class ParrotFish(object):
             os.remove(env_pkl)
         logger.cli("Cleared history")
 
+    @classmethod
+    @hug.object.cli
+    def ls(cls):
+        logger.cli(str(Env.repo.abspath))
+        logger.cli('\n' + Env.repo.file_structure())
 
+    ####################################
+    ########  Shell Methods  ###########
+    ####################################
+
+    @classmethod
+    def command_completer(cls):
+        def add_completions(*iterables):
+            words = []
+            products = itertools.product(*iterables)
+            for prod in products:
+                for i, word in enumerate(prod):
+                    partial_prod = prod[:i + 1]
+                    words.append(' '.join(partial_prod))
+            return list(set(words))
+
+        completions = []
+        categories = list(cls.get_categories().keys())
+        completions += add_completions(['set_category'], categories)
+        completions += add_completions(['set_session'], SM.sessions.keys())
+        completions += ["exit"]
+        completions += list(API.cli.commands.keys())
+        return CustomCompleter(list(set(completions)))
+
+    def parse_shell_command(self, command):
+        args = re.split('\s+', command)
+        fxn_name = args[0]
+        args = args[1:]
+        kwargs = {}
+        if fxn_name == '-h' or fxn_name == '--help':
+            print(API.cli)
+        elif fxn_name.startswith('exit'):
+            return EXIT
+        cmd = API.cli.commands.get(fxn_name, None)
+        if cmd:
+            if args and args[0] in ['-h', '--help']:
+                print(cmd.interface.__doc__)
+            else:
+                if hasattr(self, '{}_interactive'.format(fxn_name)):
+                    args, kwargs = getattr(self, '{}_interactive'.format(fxn_name))()
+                return cmd.interface(*args, **kwargs)
+        elif fxn_name.strip() == '':
+            pass
+        else:
+            print("Cmd {} not found. Use '-h' or '--help' for help. Click tab for available commands.".format(fxn_name))
+
+    def move_repo_interactive(self):
+        path = prompt('> enter path: ', completer=PathCompleter(only_directories=True, expanduser=True))
+        return (os.path.expanduser(path),), {}
 
     @hug.object.cli
-    def exit(self, interactive=True):
-        return -1
-
-    def command_completer(self):
-        return WordCompleter(list(API.cli.commands.keys()))
-
-
-    # TODO: create interactive wrapper for sending parameters to other commands
-    # TODO: word completer for specific commands
-    @hug.object.cli
-    def interactive(self):
+    def shell(self):
         print("Entering interactive")
         res = 1
-        while not res == -1:
+        while not res == EXIT:
+            def get_bottom_toolbar_tokens(cli):
+                # return [(Token.Toolbar, ' \'-h\' or \'--help\' for help | \'exit\' to exit')]
+                return [(Token.Toolbar, 'Dir: {}'.format(str(Env.repo.abspath)))]
+
             answer = prompt(completer=self.command_completer(),
                             get_prompt_tokens=get_prompt_tokens,
-                            style=example_style)
-            args = re.split('\s+', answer)
-            fxn_name = args[0]
-            args = args[1:]
-            if fxn_name in API.cli.commands:
-                fxn = getattr(self, fxn_name)
-                res = fxn(*args, interactive=True)
-            elif fxn_name == '-h' or fxn_name == '--h':
-                print(API._cli)
-            else:
-                print("Cmd {} not found. Use '-h' or '--help' for help. Click tab for available cmds.".format(fxn_name))
-
+                            style=prompt_style,
+                            get_bottom_toolbar_tokens=get_bottom_toolbar_tokens)
+            res = self.parse_shell_command(answer)
         print("goodbye!")
 
 
 # TODO: if Parrotfish is updated, make sure there is a way to delete the old environment if somekind of error occurs
-
 def run_pfish():
     ParrotFish.load()
     CustomLogging.set_level(logging.VERBOSE)
     API.cli()
+
 
 if __name__ == '__main__':
     run_pfish()
