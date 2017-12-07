@@ -171,7 +171,7 @@ class ParrotFish(object):
         code_parent = code_file.code_parent
 
         id_ = {"id": code_parent.id}
-        aq_code_parents = code_parent.where(code_parent.__class__.__name__, id_)
+        aq_code_parents = code_parent.where_callback(code_parent.__class__.__name__, id_)
         if aq_code_parents is None or aq_code_parents == []:
             logger.warning("Could not find {} with {}".format(
                 code_parent.__name__, id_))
@@ -450,9 +450,11 @@ class ParrotFish(object):
             return list(set(words))
 
         completions = []
-        categories = list(cls.get_categories().keys())
-        completions += add_completions(['set_category'], categories)
-        completions += add_completions(['set_session'], SM.sessions.keys())
+        if SM.current:
+            categories = list(cls.get_categories().keys())
+            completions += add_completions(['set_category'], categories)
+        if SM.sessions:
+            completions += add_completions(['set_session'], SM.sessions.keys())
         completions += ["exit"]
         completions += list(API.cli.commands.keys())
         return CustomCompleter(list(set(completions)))
@@ -473,7 +475,10 @@ class ParrotFish(object):
             else:
                 if hasattr(self, '{}_interactive'.format(fxn_name)):
                     args, kwargs = getattr(self, '{}_interactive'.format(fxn_name))()
-                return cmd.interface(*args, **kwargs)
+                try:
+                    return cmd.interface(*args, **kwargs)
+                except Exception as e:
+                    logger.cli(str(e.args))
         elif fxn_name.strip() == '':
             pass
         else:
@@ -502,7 +507,14 @@ class ParrotFish(object):
 
 # TODO: if Parrotfish is updated, make sure there is a way to delete the old environment if somekind of error occurs
 def run_pfish():
-    ParrotFish.load()
+    try:
+        ParrotFish.load()
+    except:
+        raise Exception("Something went wrong while loading an old environment file."
+                        "This can happen if there was an update to parrotfish."
+                        "If you cannot resolve the error, run 'pfish clear_history' in "
+                        "your counsel to"
+                        "remove the old file and create a new one.")
     CustomLogging.set_level(logging.VERBOSE)
     API.cli()
 

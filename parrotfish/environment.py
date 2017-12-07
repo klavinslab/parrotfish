@@ -1,7 +1,6 @@
 import os
 import dill
 from magicdir import MagicDir
-from pydent import AqSession
 from parrotfish.utils.log import CustomLogging
 from parrotfish.utils.utils import sanitize_filename
 from parrotfish.session import SessionManager
@@ -73,6 +72,10 @@ class Environment(object):
         with open(self.env_pkl(), 'wb') as f:
             dill.dump(self, f)
 
+    @property
+    def environment_file(self):
+        return Path(self.PKGDIR, '.environ')
+
     def load(self):
         """Loads the environment from the pickle filepath.
 
@@ -80,11 +83,12 @@ class Environment(object):
         state. The overridden magic __setstate__ updates the class's shared state dictionary which
         results in updating *all* shared_states for all environment instances. No need to return
         anything here."""
-        e = Path(self.PKGDIR, '.environ')
+        e = self.environment_file
         os.makedirs(e, exist_ok=True)
         if self.env_pkl().is_file():
             with open(self.env_pkl(), 'rb') as f:
                 dill.load(f)
+
 
     def use_all_categories(self):
         """Whether to use all protocol categories"""
