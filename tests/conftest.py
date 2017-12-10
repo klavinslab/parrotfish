@@ -61,5 +61,5 @@ def reset():
 
 
 ####### Setup test environment #######
-sessions()
 reset()()
+sessions()
