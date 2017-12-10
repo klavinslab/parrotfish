@@ -2,7 +2,7 @@ import os
 import dill
 from magicdir import MagicDir
 from parrotfish.utils.log import CustomLogging
-from parrotfish.utils.utils import sanitize_filename
+from parrotfish.utils import sanitize_filename
 from parrotfish.session import SessionManager
 from pathlib import Path
 

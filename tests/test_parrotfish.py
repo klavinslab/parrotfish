@@ -2,7 +2,7 @@ import os
 import shutil
 import uuid
 
-from parrotfish import *
+from parrotfish import ParrotFish, Environment
 
 
 def test_fetch(sessions):
@@ -29,7 +29,8 @@ def test_push(sessions):
     print(library.read('r'))
     assert tag in library.read('r')
 
-    # ParrotFish.push()
+def test_push_after_load():
+    ParrotFish.set_category("ParrotFishTest")
 
 
 def test_mv(sessions, testing_environments):

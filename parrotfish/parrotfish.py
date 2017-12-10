@@ -1,7 +1,6 @@
 import itertools
 import os
 import re
-from functools import wraps
 from os import sep
 from pathlib import Path
 
@@ -60,39 +59,6 @@ def get_prompt_tokens(cli):
         (Token.Pound, '{}'.format(SM.session_name)),
         (Token.Pound, '#{} '.format(Env.category)),
     ]
-
-
-def connect(func_name):
-    """
-    Sends results of the wrapped function to another function.
-
-    Example Usage:
-
-    .. code-block:: python
-
-        class MyKlass(object):
-
-            def hello(self, name):
-                print(name)
-
-            @connect("hello")
-            def foo(self):
-                return "John"
-
-    """
-
-    def wrapped(func):
-        @wraps(func)
-        def double_wrapped(*args, **kwargs):
-            instance = args[0]
-            klass = instance.__class__
-            connected_func = getattr(klass, func_name)
-            func_args, func_kwargs = func(*args, **kwargs)
-            return connected_func(instance, *func_args, **func_kwargs)
-
-        return double_wrapped
-
-    return wrapped
 
 
 class CustomCompleter(WordCompleter):
