@@ -18,17 +18,19 @@ class SessionEnvironment(MagicDir):
         :param path: The path of this session
         :type path: str
         """
+        path = os.path.abspath(path)
         super().__init__(os.path.basename(path), push_up=False, check_attr=False)
 
         self.session_login = session_login
         self.session_url = session_url
 
+        # set root location
         self.set_dir(os.path.dirname(path))
 
         # add the environment pickle
         self.add_file('.env_pkl', attr='env_pkl')
 
-        # add protocols folder
+        # add protocols directory
         self.add('protocols')
 
     def save(self):
@@ -41,6 +43,7 @@ class SessionEnvironment(MagicDir):
                 loaded = dill.dump(self, f)
                 vars(self).update(vars(loaded))
 
+    # TODO: Implement session
     @property
     def session(self):
         """
@@ -52,7 +55,7 @@ class SessionEnvironment(MagicDir):
         pass
 
     # Methods for writing and reading OperationType and Library
-
+    # TODO: library and operation type methods are pretty similar, we could generalize but there's only two different models...
     def operation_type_dir(self, category, operation_type_name):
         # add the category directory to the protocols directory
         cat_dirname = sanitize_filename(category)
@@ -139,28 +142,3 @@ class SessionEnvironment(MagicDir):
 
         lib.source.content = lib_dir.source.read()
         return lib
-
-
-# class CodeController(MagicDir):
-#
-#     def __init__(self, category, name, accessors):
-#         cat_dirname = sanitize_filename(category)
-#         cat_dir = self.protocols.add(sanitize_attribute(category))
-#
-#         # add a new folder using operation type name
-#         basename = sanitize_filename(name)
-#         super().__init__(basename, push_up=False, check_attr=False)
-#
-#
-#
-#     def write(self):
-#         pass
-#
-#     def read(self):
-#         pass
-
-
-
-
-
-
