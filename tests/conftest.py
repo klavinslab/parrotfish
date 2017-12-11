@@ -52,7 +52,10 @@ def reset():
         Environment().environment_name = "test_env.pkl"
         if Environment().env_pkl().is_file():
             os.remove(Environment().env_pkl().absolute())
-        ParrotFish.set_category("ParrotFishTest")
+        try:
+            ParrotFish.set_category("ParrotFishTest")
+        except:
+            pass
         env1, env2 = testing_environments()
         Environment().repo.set_dir(env1)
         Environment().repo.rmdirs()
