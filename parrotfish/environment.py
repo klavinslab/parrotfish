@@ -9,6 +9,39 @@ from pathlib import Path
 logger = CustomLogging.get_logger(__name__)
 
 
+class SessionEnvironment(object):
+
+    def __init__(self, name):
+        if self._shared_state == {}:
+            self.repo = MagicDir(name)
+            self.repo.add('protocols')
+            self.category = None
+
+    def get_category(self, cat):
+        """Returns the category directory path for the given category"""
+        if os.sep in cat:
+            new_cat = sanitize_filename(cat)
+            logger.warning(
+                "Category {} is not a valid name. Renamed to {}".format(cat, new_cat))
+            cat = new_cat
+        return self.repo.add(cat, push_up=False, make_attr=False)
+
+    @property
+    def env_pkl(self):
+        """Expects environment pickle in """
+        return os.path.join(os.getcwd(), '.env_pkl')
+
+    def load(self):
+        if self.env_pkl.is_file():
+            with open(self.env_pkl(), 'rb') as f:
+                dill.load(f)
+
+    def save(self):
+        with self.env_pkl.open('wb') as f:
+            dill.dump(self, f)
+
+
+
 class Environment(object):
     """Manages the Aquarium session environment. The environment handles the following:
 
@@ -88,7 +121,6 @@ class Environment(object):
         if self.env_pkl().is_file():
             with open(self.env_pkl(), 'rb') as f:
                 dill.load(f)
-
 
     def use_all_categories(self):
         """Whether to use all protocol categories"""

@@ -398,7 +398,7 @@ class ParrotFish(object):
     @hug.object.cli
     def ls(cls):
         logger.cli(str(Env.repo.abspath))
-        logger.cli('\n' + Env.repo.file_structure())
+        logger.cli('\n' + Env.repo.show())
 
     ####################################
     ########  Shell Methods  ###########
@@ -473,6 +473,7 @@ class ParrotFish(object):
 
 # TODO: if Parrotfish is updated, make sure there is a way to delete the old environment if somekind of error occurs
 def run_pfish():
+    print(os.getcwd())
     try:
         ParrotFish.load()
     except:

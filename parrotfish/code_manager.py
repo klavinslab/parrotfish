@@ -75,12 +75,18 @@ class OperationTypeController(CodeTypeController):
 
     @property
     def meta(self):
+        print(self.code_type.dump(include={"field_types"}))
         return self.code_type.dump(include={"field_types": "allowable_field_types"})
 
     def write(self):
         super().write()
         with self.file.open('w') as f:
             json.dump(self.meta, f, indent=4)
+
+
+class LibraryController(CodeTypeController):
+
+    pass
 
 #
 # class CodeController(object):
