@@ -7,7 +7,6 @@ from pathlib import Path
 import hug
 import inflection
 from hug import API
-from parrotfish.environment import Environment
 from parrotfish.utils import compare_content, CustomLogging, logging, format_json, sanitize_filename
 from prompt_toolkit import prompt
 from prompt_toolkit.contrib.completers import WordCompleter, PathCompleter
@@ -15,13 +14,10 @@ from prompt_toolkit.styles import style_from_dict
 from prompt_toolkit.token import Token
 from pydent.models import OperationType, Library
 from requests.exceptions import InvalidSchema
+from parrotfish.session_environment import SessionManager, env_data
 
 logger = CustomLogging.get_logger(__name__)
 API = hug.API('parrotfish')
-
-# Aliases
-Env = Environment()
-SM = Env.session_manager
 EXIT = -1
 
 prompt_style = style_from_dict({
@@ -47,16 +43,16 @@ def get_prompt_tokens(cli):
     login = '<not logged in>'
     url = '<???>'
 
-    if SM.current:
-        login = SM.current.login
-        url = SM.current.url
+    if Env.current:
+        login = Env.current.login
+        url = Env.current.url
 
     return [
         (Token.Username, login),
         (Token.At, '@'),
         (Token.Host, url),
         (Token.Colon, ':'),
-        (Token.Pound, '{}'.format(SM.session_name)),
+        (Token.Pound, '{}'.format(Env.session_name)),
         (Token.Pound, '#{} '.format(Env.category)),
     ]
 
@@ -99,125 +95,132 @@ class ParrotFish(object):
         (Library, "source")
     ]
 
+    # Aliases
+    Env = SessionManager()
+
     @classmethod
     def check_for_session(cls):
-        if SM.current is None:
+        if cls.Env.current is None:
             raise Exception(
                 "You must be logged in. Register an Aquarium session.")
 
-    @staticmethod
-    def save():
+    @classmethod
+    def save(cls):
         """Saves the environment"""
-        Env.save()
+        cls.Env.save()
 
-    @staticmethod
-    def load():
+    @classmethod
+    def load(cls):
         """Loads the environment"""
-        Env.load()
-
-    @classmethod
-    @hug.object.cli
-    def push(cls):
-        cls.check_for_session()
-        code_files = cls.get_code_files()
-
-        if not Env.use_all_categories():
-            code_files = [
-                f for f in code_files if f.code_parent.category == Env.category]
-
-        for c in code_files:
-            if cls.ok_to_push(c):
-                c.code.content = c.read('r')
-                c.code.update()
-                # pass
-        cls.save()
-
-    @classmethod
-    def fetch_parent_from_server(cls, code_file):
-        code_parent = code_file.code_parent
-
-        id_ = {"id": code_parent.id}
-        aq_code_parents = code_parent.where_callback(code_parent.__class__.__name__, id_)
-        if aq_code_parents is None or aq_code_parents == []:
-            logger.warning("Could not find {} with {}".format(
-                code_parent.__name__, id_))
-        elif len(aq_code_parents) > 1:
-            logger.warning("More than one {} found with {}".format(
-                code_parent.__name__, id_))
+        if not env_data.env.exists():
+            cls.Env = SessionManager()
         else:
-            return aq_code_parents[0]
+            cls.Env = SessionManager.load()
+        return cls.Env
 
-    @staticmethod
-    def get_controller_interface(model_name):
-        return SM.current.model_interface(model_name)
-
-    @classmethod
-    def fetch_content(cls, controller_instance):
-        """
-        Fetches code content from Aquarium model (e.g. ot.code('protocol')
-
-        :param code_container: Model that contains code
-        :type code_container: OperationType or Library
-        :return:
-        :rtype:
-        """
-        for controller, accessor in cls.controllers:
-            if type(controller_instance) is controller:
-                return controller_instance.code(accessor).content
-
-    @classmethod
-    def ok_to_push(cls, code_file):
-        # Check last modified
-        # modified_at = code_file.abspath.stat().st_mtime
-        # if code_file.created_at == modified_at:
-        #     logger.verbose("File has not been modified")
-        #     return False
-        fetched_content = code_file.code.content
-
-        # Check local changes
-        local_content = code_file.read('r')
-        local_changes = compare_content(local_content, fetched_content)
-        if not local_changes:
-            logger.verbose("<{}/{}> there are no local changes.".format(
-                code_file.code_parent.category,
-                code_file.code_parent.name))
-            return False
-
-        # Check server changes
-        server_content = cls.fetch_content(
-            cls.fetch_parent_from_server(code_file))
-        server_changes = compare_content(local_content, server_content)
-        if not server_changes:
-            logger.verbose("<{}/{}> there are not any differences between local and server.".format(
-                code_file.code_parent.category,
-                code_file.code_parent.name))
-            return False
-        return True
-
-    @classmethod
-    def get_code_files(cls):
-        if not Environment().session_dir().exists():
-            logger.cli("There are no protocols in this repo.")
-            return []
-        files = Environment().session_dir().files
-        code_files = [f for f in files if hasattr(f, 'code_parent')]
-        return code_files
+    # @classmethod
+    # @hug.object.cli
+    # def push(cls):
+    #     cls.check_for_session()
+    #     code_files = cls.get_code_files()
+    #
+    #     if not Env.use_all_categories():
+    #         code_files = [
+    #             f for f in code_files if f.code_parent.category == Env.category]
+    #
+    #     for c in code_files:
+    #         if cls.ok_to_push(c):
+    #             c.code.content = c.read('r')
+    #             c.code.update()
+    #             # pass
+    #     cls.save()
+    #
+    # @classmethod
+    # def fetch_parent_from_server(cls, code_file):
+    #     code_parent = code_file.code_parent
+    #
+    #     id_ = {"id": code_parent.id}
+    #     aq_code_parents = code_parent.where_callback(code_parent.__class__.__name__, id_)
+    #     if aq_code_parents is None or aq_code_parents == []:
+    #         logger.warning("Could not find {} with {}".format(
+    #             code_parent.__name__, id_))
+    #     elif len(aq_code_parents) > 1:
+    #         logger.warning("More than one {} found with {}".format(
+    #             code_parent.__name__, id_))
+    #     else:
+    #         return aq_code_parents[0]
+    #
+    # @staticmethod
+    # def get_controller_interface(model_name):
+    #     return Env.current.model_interface(model_name)
+    #
+    # @classmethod
+    # def fetch_content(cls, controller_instance):
+    #     """
+    #     Fetches code content from Aquarium model (e.g. ot.code('protocol')
+    #
+    #     :param code_container: Model that contains code
+    #     :type code_container: OperationType or Library
+    #     :return:
+    #     :rtype:
+    #     """
+    #     for controller, accessor in cls.controllers:
+    #         if type(controller_instance) is controller:
+    #             return controller_instance.code(accessor).content
+    #
+    # @classmethod
+    # def ok_to_push(cls, code_file):
+    #     # Check last modified
+    #     # modified_at = code_file.abspath.stat().st_mtime
+    #     # if code_file.created_at == modified_at:
+    #     #     logger.verbose("File has not been modified")
+    #     #     return False
+    #     fetched_content = code_file.code.content
+    #
+    #     # Check local changes
+    #     local_content = code_file.read('r')
+    #     local_changes = compare_content(local_content, fetched_content)
+    #     if not local_changes:
+    #         logger.verbose("<{}/{}> there are no local changes.".format(
+    #             code_file.code_parent.category,
+    #             code_file.code_parent.name))
+    #         return False
+    #
+    #     # Check server changes
+    #     server_content = cls.fetch_content(
+    #         cls.fetch_parent_from_server(code_file))
+    #     server_changes = compare_content(local_content, server_content)
+    #     if not server_changes:
+    #         logger.verbose("<{}/{}> there are not any differences between local and server.".format(
+    #             code_file.code_parent.category,
+    #             code_file.code_parent.name))
+    #         return False
+    #     return True
+    #
+    # @classmethod
+    # def get_code_files(cls):
+    #     if not Environment().session_dir().exists():
+    #         logger.cli("There are no protocols in this repo.")
+    #         return []
+    #     files = Environment().session_dir().files
+    #     code_files = [f for f in files if hasattr(f, 'code_parent')]
+    #     return code_files
 
     @classmethod
     def sessions_json(cls):
         sess_dict = {}
-        for key, val in SM.sessions.items():
-            val = str(val)
-            if val is SM.current:
+        for session in cls.Env.sessions:
+            val = str(session)
+            if session is cls.Env.current:
                 val = "**" + str(val) + "**"
-            sess_dict[key] = val
+            sess_dict[session.name] = session
         return sess_dict
 
     @classmethod
     def get_categories(cls):
         categories = {}
         for controller, _ in cls.controllers:
-            all_models = SM.current.model_interface(controller.__name__).all()
+            all_models = Env.current.model_interface(controller.__name__).all()
             for m in all_models:
                 categories.setdefault(m.category, []).append(m)
         return categories
@@ -272,7 +275,7 @@ class ParrotFish(object):
     @hug.object.cli
     def sessions(cls):
         """List the current available sessions"""
-        sessions = SM.sessions
+        sessions = Env.sessions
         logger.cli(format_json(cls.sessions_json()))
         return sessions
 
@@ -282,8 +285,8 @@ class ParrotFish(object):
         """ Get the current environment state. """
         logger.cli(format_json({
             "session": "{}: {}".format(
-                SM.session_name,
-                str(SM.current)),
+                Env.session_name,
+                str(Env.current)),
             "sessions": cls.sessions_json(),
             "category": Env.category,
             "repo": str(Env.repo.abspath)
@@ -330,13 +333,13 @@ class ParrotFish(object):
     def set_session(cls, session_name: hug.types.text):
         """ Set the session by name. Use "sessions" to find all available sessions. """
         cls.check_for_session()
-        sessions = SM.sessions
+        sessions = Env.sessions
         if session_name not in sessions:
             logger.error("Session \"{}\" not in available sessions ({})".format(session_name, ', '
                                                                                               ''.join(sessions.keys())))
 
         logger.cli("Setting session to \"{}\"".format(session_name))
-        SM.set_current(session_name)
+        Env.set_current(session_name)
         cls.save()
 
     @classmethod
@@ -355,7 +358,7 @@ class ParrotFish(object):
             raise Exception("Path {} does not exist".format(str(path)))
         logger.cli("Moving repo location from {} to {}".format(
             Env.repo.abspath, path))
-        Env.move_repo(path)
+        Env.mvdirs(path)
         cls.save()
 
     @classmethod
@@ -366,7 +369,7 @@ class ParrotFish(object):
                  session_name: hug.types.text):
         """ Registers a new session. """
         try:
-            SM.register_session(login, password,
+            cls.Env.register_session(login, password,
                                 aquarium_url, session_name)
         except InvalidSchema:
             raise InvalidSchema("Missing schema for {}. Did you forget the \"http://\"?"
@@ -378,26 +381,24 @@ class ParrotFish(object):
     @classmethod
     @hug.object.cli
     def unregister(cls, name):
-        sessions = SM
-        if name in sessions:
+        if name in cls.Env.sessions:
             logger.cli("Unregistering {}: {}".format(
-                name, str(sessions[name])))
-            sessions.remove_session(name)
+                name, str(Env.get_session(name))))
+            cls.Env.remove_session(name)
         else:
             logger.cli("Session {} does not exist".format(name))
         cls.save()
 
-    @hug.object.cli
-    def clear_history(self):
-        env_pkl = Env.env_pkl()
-        if env_pkl.exists():
-            os.remove(env_pkl)
-        logger.cli("Cleared history")
+    # @hug.object.cli
+    # def clear_history(self):
+    #     if env_data.exists():
+    #         os.remove(env_data.abspath)
+    #     logger.cli("Cleared history")
 
     @classmethod
     @hug.object.cli
     def ls(cls):
-        logger.cli(str(Env.repo.abspath))
+        logger.cli(str(Env.abspath))
         logger.cli('\n' + Env.repo.show())
 
     ####################################
@@ -416,11 +417,11 @@ class ParrotFish(object):
             return list(set(words))
 
         completions = []
-        if SM.current:
+        if Env.current:
             categories = list(cls.get_categories().keys())
             completions += add_completions(['set_category'], categories)
-        if SM.sessions:
-            completions += add_completions(['set_session'], SM.sessions.keys())
+        if Env.sessions:
+            completions += add_completions(['set_session'], Env.sessions.keys())
         completions += ["exit"]
         completions += list(API.cli.commands.keys())
         return CustomCompleter(list(set(completions)))

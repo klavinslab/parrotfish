@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 
 
-def test_env_borg(sessions):
+def test_env_borg():
 
     env = Environment()
 
