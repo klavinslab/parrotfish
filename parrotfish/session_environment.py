@@ -11,11 +11,10 @@ import datetime
 from parrotfish.__version__ import __version__
 logger = CustomLogging.get_logger(__name__)
 
+
+# TODO: different name for ENV_DATA
 # where saved data is stored
 HERE = os.path.dirname(os.path.abspath(__file__))
-env_data = MagicDir(os.path.join(HERE, 'environment_data'))
-env_data.add_file('env.json', attr='env')
-
 
 class SessionEnvironment(MagicDir):
 
@@ -98,24 +97,25 @@ class SessionEnvironment(MagicDir):
             'field_types': 'allowable_field_types'
         }
 
+        metadata = operation_type.dump(
+            include={'protocol': {},
+                     'documentation': {},
+                     'cost_model': {},
+                     'precondition': {},
+                     "field_types": "allowable_field_types"
+                     }
+            )
+
         # write metadata
         ot_dir.meta.dump_json(
-            operation_type.dump(
-                include={'protocol': {},
-                         'documentation': {},
-                         'cost_model': {},
-                         'precondition': {},
-                         'field_types': 'allowable_field_types'
-                         }
-            ),
+            metadata,
             indent=4,
         )
 
         # write codes
-        ot_dir.protocol.write(operation_type.code('protocol').content)
-        ot_dir.precondition.write(operation_type.code('precondition').content)
-        ot_dir.documentation.write(operation_type.code('documentation').content)
-        ot_dir.cost_model.write(operation_type.code('cost_model').content)
+        for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
+            logger.cli("    saving {}".format(accessor))
+            ot_dir.protocol.write(metadata[accessor]['content'])
 
     def write_library(self, library):
         lib_dir = self.library_type_dir(library.category, library.name)
@@ -148,20 +148,53 @@ class SessionEnvironment(MagicDir):
 
 class SessionManager(MagicDir):
 
-    def __init__(self, name="FishTank"):
-        super().__init__(name, push_up=False, check_attr=False)
-        self._current_session = None
+    DEFAULT_METADATA_LOC = os.path.join(HERE, 'environment_data')
+    DEFAULT_METADATA_NAME = 'env.json'
 
+    def __init__(self, name="FishTank", meta_dir=None, meta_name=None):
+        """
+        SessionManager constructor
+
+        :param name: name of the folder
+        :type name: str
+        :param meta_dir: directory to store the metadata
+        :type meta_dir: str
+        :param meta_name: name of the file to store the metadata
+        :type meta_name: str
+        """
+        super().__init__(name, push_up=False, check_attr=False)
+
+        # Add metadata
+        # this is where session manager information will be stored
+        if meta_dir is None:
+            meta_dir = self.DEFAULT_METADATA_LOC
+        if meta_name is None:
+            meta_name = self.DEFAULT_METADATA_NAME
+        self.metadata = MagicDir(meta_dir)
+        self.metadata.add_file(meta_name, 'env')
+
+        self._current_session = None
 
     def register_session(self, login, password, aquarium_url, name):
         """Registers a new session by creating a AqSession, creating
         a SessionEnvironment and adding it to the SessionManager"""
+        if name in self.sessions:
+            logger.warning("'{}' already exists!".format(name))
+            return
         session = AqSession(login, password, aquarium_url, name=name)
         session_env = SessionEnvironment(name, session)
-        self.add_session_env(session_env)
+        self._add_session_env(session_env)
 
-    def add_session_env(self, session_env):
+    def _add_session_env(self, session_env):
+        """Adds the session environment to the session manager"""
         self._add(session_env.name, session_env, push_up=False, check_attr=False)
+
+    @property
+    def current_env(self):
+        """Current session environment"""
+        if self._current_session is None:
+            return None
+        return self.get(self._current_session)
 
     @property
     def current(self):
@@ -172,11 +205,10 @@ class SessionManager(MagicDir):
 
     def set_current(self, name):
         """Sets the current session name"""
-        session_names = [session.name for session in self.sessions]
-        if name in session_names:
+        if name in self.sessions:
             self._current_session = name
         else:
-            logger.warning("'{}' not in sessions ({})".format(name, ', '.join(session_names)))
+            logger.warning("'{}' not in sessions ({})".format(name, ', '.join(self.sessions.keys())))
 
     @property
     def session_envs(self):
@@ -186,8 +218,7 @@ class SessionManager(MagicDir):
     @property
     def sessions(self):
         """Returns all sessions"""
-        s = self.session_envs
-        return [env.session for env in self.session_envs]
+        return {env.session.name: env.session for env in self.session_envs}
 
     def get_session(self, name):
         """Gets a AqSession by name"""
@@ -202,29 +233,36 @@ class SessionManager(MagicDir):
         session_env.remove_parent()
 
     def move_repo(self, path):
+        """Move all of the folders to a new location"""
         super().mvdirs(path)
         self.save()
 
     def save(self):
-        env_data.env.dump_json(
+        """Save the metadata"""
+        self.metadata.env.dump_json(
             {
                 "root": str(self.abspath),
+                'current': self._current_session,
                 "updated_at": str(datetime.datetime.now()),
                 "version": __version__
             },
             indent=4)
         self.save_environments()
 
-    @classmethod
-    def load(cls):
-        meta = env_data.env.load_json()
-        if __version__ != meta['version']:
-            logger.warning("Version mismatched! Environment data stored using "
-                           "ParrotFish version '{}' but currently using '{}'"
-                           .format(meta['version'], __version__))
-        return cls.load_environments(meta['root'])
+    def load(cls, path_to_metadata):
+        """Load from the metadata"""
+        with open(path_to_metadata, 'r') as f:
+            meta = json.load(f)
+            if __version__ != meta['version']:
+                logger.warning("Version mismatched! Environment data stored using "
+                               "ParrotFish version '{}' but currently using '{}'"
+                               .format(meta['version'], __version__))
+            env = cls.load_environments(meta['root'])
+            env.set_current(meta['current'])
+            return env
 
     def save_environments(self):
+        """Save all of the session environments"""
         for session_env in self.session_envs:
             session_env.save_to_pkl()
 
@@ -240,6 +278,6 @@ class SessionManager(MagicDir):
         env_pkls = glob(os.path.join(dir, "*", SessionEnvironment.ENV_PKL))
         for env_pkl in env_pkls:
             session_env = SessionEnvironment.load_from_pkl(env_pkl)
-            sm.add_session_env(session_env)
+            sm._add_session_env(session_env)
         return sm
 

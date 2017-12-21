@@ -4,14 +4,23 @@ from pathlib import Path
 
 import pytest
 
-from parrotfish import *
+from parrotfish import ParrotFish
+from parrotfish.session_environment import SessionManager
 from parrotfish.utils.log import CustomLogging, logging
-from parrotfish.session_environment import env_data
+
 
 @pytest.fixture(scope="module")
 def here():
     return os.path.dirname(os.path.abspath(__file__))
 
 
-env_data.env.name = "test_env.json"
+@pytest.fixture(scope="function")
+def pfish(tmpdir):
+    pfish = ParrotFish()
+    sm = SessionManager()
+    sm.metadata.set_dir(tmpdir)
+    pfish.set_session_manager(sm)
+    return pfish
 
+
+CustomLogging.set_level(logging.VERBOSE)

@@ -3,49 +3,74 @@ import shutil
 import uuid
 
 from parrotfish import ParrotFish
-from parrotfish.session_environment import SessionManager
 
 
-
-def test_load():
-    ParrotFish.load()
-
-
-def test_save():
-    ParrotFish.load()
-    ParrotFish.save()
+def test_load(pfish):
+    pfish.load()
 
 
-def test_register():
-    ParrotFish.register("vrana", "Mountain5", "http://52.27.43.242:81/", "nursery")
-    print(ParrotFish.sessions)
+def test_save(pfish):
+    pfish.load()
+    pfish.save()
+
+
+def test_register(pfish):
+    pfish.register("vrana", "Mountain5", "http://52.27.43.242:81/", "nursery")
+    print(pfish.sessions())
+
+
+def test_get_categories(pfish):
+    pfish.register("vrana", "Mountain5", "http://52.27.43.242:81/", "nursery")
+    pfish.set_session("nursery")
+    cats = pfish.get_categories()
+    print(cats)
+
+def test_categories(pfish):
+    pfish.register("vrana", "Mountain5", "http://52.27.43.242:81/", "nursery")
+    pfish.set_session("nursery")
+    cats = pfish.categories()
+    print(cats)
+
+
+def test_fetch(pfish):
+    pfish.register("vrana", "Mountain5", "http://52.27.43.242:81/", "nursery")
+    pfish.set_session("nursery")
+    pfish.fetch("ParrotFishTest")
+
+def test_ls(pfish):
+    pass
+
+def test_protocols(pfish):
+    pfish.register("vrana", "Mountain5", "http://52.27.43.242:81/", "nursery")
+    pfish.set_session("nursery")
+    pfish.protocols()
 #
 # def test_fetch(sessions):
-#     ParrotFish.set_category("ParrotFishTest")
-#     ParrotFish.fetch()
-#     library = Environment().get_category("ParrotFishTest").get("Library1.rb")
+#     pfish.set_category("pfishTest")
+#     pfish.fetch()
+#     library = Environment().get_category("pfishTest").get("Library1.rb")
 #     assert library.exists()
 #
 #
 # def test_push(sessions):
-#     ParrotFish.set_category("ParrotFishTest")
+#     pfish.set_category("pfishTest")
 #
-#     library = Environment().get_category("ParrotFishTest").get("Library1.rb")
+#     library = Environment().get_category("pfishTest").get("Library1.rb")
 #     content = library.read('r')
 #     tag = str(uuid.uuid4())
 #     library.write('w', tag + '/n/n/n/n\n\n\n\n' + content)
 #     new_content = library.read('r')
 #     ss = library.abspath.stat().st_mtime
 #     assert tag in library.read('r')
-#     ParrotFish.push()
-#     ParrotFish.fetch()
+#     pfish.push()
+#     pfish.fetch()
 #     print(tag)
 #     print()
 #     print(library.read('r'))
 #     assert tag in library.read('r')
 #
 # def test_push_after_load():
-#     ParrotFish.set_category("ParrotFishTest")
+#     pfish.set_category("pfishTest")
 #
 #
 # def test_mv(sessions, testing_environments):
@@ -54,6 +79,6 @@ def test_register():
 #         shutil.rmtree(env2)
 #         os.mkdir(env2)
 #     assert Environment().repo.dir.name == "env1"
-#     ParrotFish.move_repo(env2)
+#     pfish.move_repo(env2)
 #     assert Environment().repo.dir.name == "env2"
-#     assert Environment().get_category("ParrotFishTest").get("Library1.rb").exists()
+#     assert Environment().get_category("pfishTest").get("Library1.rb").exists()

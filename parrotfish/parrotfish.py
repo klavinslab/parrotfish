@@ -14,7 +14,7 @@ from prompt_toolkit.styles import style_from_dict
 from prompt_toolkit.token import Token
 from pydent.models import OperationType, Library
 from requests.exceptions import InvalidSchema
-from parrotfish.session_environment import SessionManager, env_data
+from parrotfish.session_environment import SessionManager
 
 logger = CustomLogging.get_logger(__name__)
 API = hug.API('parrotfish')
@@ -39,23 +39,23 @@ prompt_style = style_from_dict({
 })
 
 
-def get_prompt_tokens(cli):
-    login = '<not logged in>'
-    url = '<???>'
-
-    if Env.current:
-        login = Env.current.login
-        url = Env.current.url
-
-    return [
-        (Token.Username, login),
-        (Token.At, '@'),
-        (Token.Host, url),
-        (Token.Colon, ':'),
-        (Token.Pound, '{}'.format(Env.session_name)),
-        (Token.Pound, '#{} '.format(Env.category)),
-    ]
-
+# def get_prompt_tokens(cli):
+#     login = '<not logged in>'
+#     url = '<???>'
+#
+#     if self.session_manager.current:
+#         login = self.session_manager.current.login
+#         url = self.session_manager.current.url
+#
+#     return [
+#         (Token.Username, login),
+#         (Token.At, '@'),
+#         (Token.Host, url),
+#         (Token.Colon, ':'),
+#         (Token.Pound, '{}'.format(self.session_manager.session_name)),
+#         (Token.Pound, '#{} '.format(self.session_manager.category)),
+#     ]
+#
 
 class CustomCompleter(WordCompleter):
     """
@@ -95,48 +95,54 @@ class ParrotFish(object):
         (Library, "source")
     ]
 
-    # Aliases
-    Env = SessionManager()
+    def __init__(self):
+        """
+        ParrotFish constructor
+        """
+        self.session_manager = SessionManager()
 
-    @classmethod
-    def check_for_session(cls):
-        if cls.Env.current is None:
+    def add_session_manager(self, new_sm):
+        self.session_manager = new_sm
+
+    def check_for_session(self):
+        if self.session_manager.current is None:
             raise Exception(
                 "You must be logged in. Register an Aquarium session.")
 
-    @classmethod
-    def save(cls):
+    
+    def save(self):
         """Saves the environment"""
-        cls.Env.save()
+        self.session_manager.save()
 
     @classmethod
-    def load(cls):
+    def load(self):
         """Loads the environment"""
-        if not env_data.env.exists():
-            cls.Env = SessionManager()
+        if not self.session_manager.metadata.exists():
+            self.session_manager = SessionManager()
         else:
-            cls.Env = SessionManager.load()
-        return cls.Env
+            self.session_manager = SessionManager(self.session_manager)
+            self.session_manager.load()
+        return self.session_manager
 
-    # @classmethod
+    # 
     # @hug.object.cli
-    # def push(cls):
-    #     cls.check_for_session()
-    #     code_files = cls.get_code_files()
+    # def push(self):
+    #     self.check_for_session()
+    #     code_files = self.get_code_files()
     #
-    #     if not Env.use_all_categories():
+    #     if not self.session_manager.use_all_categories():
     #         code_files = [
-    #             f for f in code_files if f.code_parent.category == Env.category]
+    #             f for f in code_files if f.code_parent.category == self.session_manager.category]
     #
     #     for c in code_files:
-    #         if cls.ok_to_push(c):
+    #         if self.ok_to_push(c):
     #             c.code.content = c.read('r')
     #             c.code.update()
     #             # pass
-    #     cls.save()
+    #     self.save()
     #
-    # @classmethod
-    # def fetch_parent_from_server(cls, code_file):
+    # 
+    # def fetch_parent_from_server(self, code_file):
     #     code_parent = code_file.code_parent
     #
     #     id_ = {"id": code_parent.id}
@@ -152,10 +158,10 @@ class ParrotFish(object):
     #
     # @staticmethod
     # def get_controller_interface(model_name):
-    #     return Env.current.model_interface(model_name)
+    #     return self.session_manager.current.model_interface(model_name)
     #
-    # @classmethod
-    # def fetch_content(cls, controller_instance):
+    # 
+    # def fetch_content(self, controller_instance):
     #     """
     #     Fetches code content from Aquarium model (e.g. ot.code('protocol')
     #
@@ -164,12 +170,12 @@ class ParrotFish(object):
     #     :return:
     #     :rtype:
     #     """
-    #     for controller, accessor in cls.controllers:
+    #     for controller, accessor in self.controllers:
     #         if type(controller_instance) is controller:
     #             return controller_instance.code(accessor).content
     #
-    # @classmethod
-    # def ok_to_push(cls, code_file):
+    # 
+    # def ok_to_push(self, code_file):
     #     # Check last modified
     #     # modified_at = code_file.abspath.stat().st_mtime
     #     # if code_file.created_at == modified_at:
@@ -187,8 +193,8 @@ class ParrotFish(object):
     #         return False
     #
     #     # Check server changes
-    #     server_content = cls.fetch_content(
-    #         cls.fetch_parent_from_server(code_file))
+    #     server_content = self.fetch_content(
+    #         self.fetch_parent_from_server(code_file))
     #     server_changes = compare_content(local_content, server_content)
     #     if not server_changes:
     #         logger.verbose("<{}/{}> there are not any differences between local and server.".format(
@@ -197,197 +203,186 @@ class ParrotFish(object):
     #         return False
     #     return True
     #
-    # @classmethod
-    # def get_code_files(cls):
-    #     if not Environment().session_dir().exists():
+    # 
+    # def get_code_files(self):
+    #     if not self.session_managerironment().session_dir().exists():
     #         logger.cli("There are no protocols in this repo.")
     #         return []
-    #     files = Environment().session_dir().files
+    #     files = self.session_managerironment().session_dir().files
     #     code_files = [f for f in files if hasattr(f, 'code_parent')]
     #     return code_files
 
-    @classmethod
-    def sessions_json(cls):
+    
+    @hug.object.cli
+    def session(self):
+        return self.session_manager.current
+
+    
+    def sessions_json(self):
         sess_dict = {}
-        for session in cls.Env.sessions:
+        for session_name, session in self.session_manager.sessions.items():
             val = str(session)
-            if session is cls.Env.current:
-                val = "**" + str(val) + "**"
-            sess_dict[session.name] = session
+            sess_dict[session_name] = val
         return sess_dict
 
-    @classmethod
-    def get_categories(cls):
+    
+    def get_categories(self):
         categories = {}
-        for controller, _ in cls.controllers:
-            all_models = Env.current.model_interface(controller.__name__).all()
-            for m in all_models:
-                categories.setdefault(m.category, []).append(m)
+        operation_types = self.session_manager.current.OperationType.all()
+        libraries = self.session_manager.current.Library.all()
+        for ot in operation_types:
+            l = categories.get(ot.category, [])
+            l.append(ot)
+            categories[ot.category] = l
+        for lib in libraries:
+            l = categories.get(lib.category, [])
+            l.append(lib)
+            categories[lib.category] = l
         return categories
 
-    @classmethod
+    
     @hug.object.cli
-    def fetch(cls):
+    def fetch(self, category: hug.types.text):
         """ Fetch protocols from the current session & category and pull to local repo. """
-        cls.check_for_session()
-        for controller, accessor in cls.controllers:
+        self.check_for_session()
+        ots = self.session_manager.current.OperationType.where({"category": category})
+        logger.cli("{} operation_types found".format(len(ots)))
+        logger.cli("This may take awhile...")
+        for ot in ots:
+            print(ot)
+            logger.cli("Saving {}".format(ot.name))
+            curr_env = self.session_manager.current_env
+            curr_env.write_operation_type(ot)
+        self.save()
 
-            # Get models based on category
-            model_contoller = cls.get_controller_interface(controller.__name__)
-            models = None
-            if Environment().use_all_categories():
-                models = model_contoller.all()
-                logger.cli("Fetching all categories...")
-            else:
-                models = model_contoller.where({"category": Environment().category})
-                logger.cli("Fetching code for category {}".format(
-                    Environment().category))
-            logger.cli("\t{} {} found...".format(
-                len(models), inflection.pluralize(controller.__name__)))
-
-            for m in models:
-                logger.cli("\t\tSaving code for {}/{}".format(m.category, m.name))
-                code = m.code(accessor)  # an Aquarium Code model
-                if code is None:
-                    logger.warning("\t\tCould not get code content for {}".format(m.name))
-                else:
-                    # save code content
-                    cat_dir = Environment().get_category(m.category)
-                    code_name = '{}.rb'.format(m.name)
-
-                    # sanitize the filename if protocol name has filepath seperators in it
-                    if sep in code_name:
-                        code_name = sanitize_filename(code_name)
-
-                    # create a MagicFile instance that store the filepath & content
-                    code_file = cat_dir.add_file(code_name, make_attr=False, push_up=False)
-
-                    # write the content to the filepath
-                    code_file.write('w', code.content)
-
-                    # add additional code_parent information to the MagicFile instance
-                    code_file.code = code
-                    code_file.code_parent = m
-                    code_file.created_at = code_file.abspath.stat().st_mtime
-        cls.save()
-
-    @classmethod
+    
     @hug.object.cli
-    def sessions(cls):
+    def sessions(self):
         """List the current available sessions"""
-        sessions = Env.sessions
-        logger.cli(format_json(cls.sessions_json()))
+        sessions = self.session_manager.sessions
+        logger.cli(format_json(self.sessions_json()))
         return sessions
 
-    @classmethod
-    @hug.object.cli
-    def state(cls):
-        """ Get the current environment state. """
-        logger.cli(format_json({
-            "session": "{}: {}".format(
-                Env.session_name,
-                str(Env.current)),
-            "sessions": cls.sessions_json(),
-            "category": Env.category,
-            "repo": str(Env.repo.abspath)
-        }))
+    # 
+    # @hug.object.cli
+    # def state(self):
+    #     """ Get the current environment state. """
+    #     logger.cli(format_json({
+    #         "session": "{}: {}".format(
+    #             self.session_manager.session_name,
+    #             str(self.session_manager.current)),
+    #         "sessions": self.sessions_json(),
+    #         "category": self.session_manager.category,
+    #         "repo": str(self.session_manager.repo.abspath)
+    #     }))
+    #
 
-    @classmethod
+    
     @hug.object.cli
-    def protocols(cls):
-        """ Get and count the number of protocols on the local machine """
-        cls.check_for_session()
-        files = cls.get_code_files()
-        logger.cli(format_json(
-            ['/'.join([f.code_parent.category, f.code_parent.name]) for f in files]))
+    def protocols(self):
+        env = self.session_manager.current_env
+        cats = env.protocols.dirs
+        for cat in env.protocols.dirs:
+            for code in cat.dirs:
+                logger.cli(cat.name + "/" + code.name)
 
-    @classmethod
-    @hug.object.cli
-    def category(cls):
-        """ Get the current category of the environment. """
-        logger.cli(Env.category)
-        return Env.category
+    #
 
-    @classmethod
-    @hug.object.cli
-    def set_category(cls, category: hug.types.text):
-        """ Set the category of the environment. Set "all" to use all categories. Use "categories" to find all
-        categories. """
-        cls.check_for_session()
-        logger.cli("Setting category to \"{}\"".format(category))
-        Env.category = category
-        cls.save()
+    # 
+    # @hug.object.cli
+    # def protocols(self):
+    #     """ Get and count the number of protocols on the local machine """
+    #     self.check_for_session()
+    #     files = self.get_code_files()
+    #     logger.cli(format_json(
+    #         ['/'.join([f.code_parent.category, f.code_parent.name]) for f in files]))
+    #
+    # 
+    # @hug.object.cli
+    # def category(self):
+    #     """ Get the current category of the environment. """
+    #     logger.cli(self.session_manager.category)
+    #     return self.session_manager.category
+    #
+    # 
+    # @hug.object.cli
+    # def set_category(self, category: hug.types.text):
+    #     """ Set the category of the environment. Set "all" to use all categories. Use "categories" to find all
+    #     categories. """
+    #     self.check_for_session()
+    #     logger.cli("Setting category to \"{}\"".format(category))
+    #     self.session_manager.category = category
+    #     self.save()
 
-    @classmethod
+    
     @hug.object.cli
-    def categories(cls):
+    def categories(self):
         """ Get all available categories and count """
-        cls.check_for_session()
+        self.check_for_session()
         logger.cli("Getting category counts:")
-        categories = cls.get_categories()
+        categories = self.get_categories()
         category_count = {k: len(v) for k, v in categories.items()}
         logger.cli(format_json(category_count))
 
-    @classmethod
+    
     @hug.object.cli
-    def set_session(cls, session_name: hug.types.text):
+    def set_session(self, session_name: hug.types.text):
         """ Set the session by name. Use "sessions" to find all available sessions. """
-        cls.check_for_session()
-        sessions = Env.sessions
+        sessions = self.session_manager.sessions
         if session_name not in sessions:
             logger.error("Session \"{}\" not in available sessions ({})".format(session_name, ', '
                                                                                               ''.join(sessions.keys())))
 
         logger.cli("Setting session to \"{}\"".format(session_name))
-        Env.set_current(session_name)
-        cls.save()
+        self.session_manager.set_current(session_name)
+        self.save()
 
-    @classmethod
+    
     @hug.object.cli
-    def set(cls, session_name: hug.types.text, category: hug.types.text):
+    def set(self, session_name: hug.types.text, category: hug.types.text):
         """Sets the session and category"""
-        cls.set_session(session_name)
-        cls.set_category(category)
+        self.set_session(session_name)
+        self.set_category(category)
 
-    @classmethod
+    
     @hug.object.cli
-    def move_repo(cls, path: hug.types.text):
+    def move_repo(self, path: hug.types.text):
         """ Moves the current repo to another location. """
         path = Path(path).absolute()
         if not path.is_dir():
             raise Exception("Path {} does not exist".format(str(path)))
         logger.cli("Moving repo location from {} to {}".format(
-            Env.repo.abspath, path))
-        Env.mvdirs(path)
-        cls.save()
+            self.session_manager.abspath, path))
+        self.session_manager.move_repo(path)
+        self.save()
 
-    @classmethod
+    
     @hug.object.cli
-    def register(cls, login: hug.types.text,
+    def register(self, login: hug.types.text,
                  password: hug.types.text,
                  aquarium_url: hug.types.text,
                  session_name: hug.types.text):
         """ Registers a new session. """
         try:
-            cls.Env.register_session(login, password,
+            self.session_manager.register_session(login, password,
                                 aquarium_url, session_name)
         except InvalidSchema:
             raise InvalidSchema("Missing schema for {}. Did you forget the \"http://\"?"
                                 .format(aquarium_url))
         logger.cli("registering session: {}".format(session_name))
-        cls.save()
-        return cls
+        self.save()
+        return self
 
-    @classmethod
+    
     @hug.object.cli
-    def unregister(cls, name):
-        if name in cls.Env.sessions:
+    def unregister(self, name):
+        if name in self.session_manager.sessions:
             logger.cli("Unregistering {}: {}".format(
-                name, str(Env.get_session(name))))
-            cls.Env.remove_session(name)
+                name, str(self.session_manager.get_session(name))))
+            self.session_manager.remove_session(name)
         else:
             logger.cli("Session {} does not exist".format(name))
-        cls.save()
+        self.save()
 
     # @hug.object.cli
     # def clear_history(self):
@@ -395,18 +390,18 @@ class ParrotFish(object):
     #         os.remove(env_data.abspath)
     #     logger.cli("Cleared history")
 
-    @classmethod
+    
     @hug.object.cli
-    def ls(cls):
-        logger.cli(str(Env.abspath))
-        logger.cli('\n' + Env.repo.show())
+    def ls(self):
+        logger.cli(str(self.session_manager.abspath))
+        logger.cli('\n' + self.session_manager.show())
 
     ####################################
     ########  Shell Methods  ###########
     ####################################
 
-    @classmethod
-    def command_completer(cls):
+    
+    def command_completer(self):
         def add_completions(*iterables):
             words = []
             products = itertools.product(*iterables)
@@ -417,11 +412,11 @@ class ParrotFish(object):
             return list(set(words))
 
         completions = []
-        if Env.current:
-            categories = list(cls.get_categories().keys())
+        if self.session_manager.current:
+            categories = list(self.get_categories().keys())
             completions += add_completions(['set_category'], categories)
-        if Env.sessions:
-            completions += add_completions(['set_session'], Env.sessions.keys())
+        if self.session_manager.sessions:
+            completions += add_completions(['set_session'], self.session_manager.sessions.keys())
         completions += ["exit"]
         completions += list(API.cli.commands.keys())
         return CustomCompleter(list(set(completions)))
@@ -462,7 +457,7 @@ class ParrotFish(object):
         while not res == EXIT:
             def get_bottom_toolbar_tokens(cli):
                 # return [(Token.Toolbar, ' \'-h\' or \'--help\' for help | \'exit\' to exit')]
-                return [(Token.Toolbar, 'Dir: {}'.format(str(Env.repo.abspath)))]
+                return [(Token.Toolbar, 'Dir: {}'.format(str(self.session_manager.repo.abspath)))]
 
             answer = prompt(completer=self.command_completer(),
                             get_prompt_tokens=get_prompt_tokens,
