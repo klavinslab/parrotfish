@@ -37,8 +37,10 @@ def test_fetch(pfish):
     pfish.set_session("nursery")
     pfish.fetch("ParrotFishTest")
 
+
 def test_ls(pfish):
     pass
+
 
 def test_protocols(pfish):
     pfish.register("vrana", "Mountain5", "http://52.27.43.242:81/", "nursery")

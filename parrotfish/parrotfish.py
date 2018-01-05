@@ -17,7 +17,6 @@ from requests.exceptions import InvalidSchema
 from parrotfish.session_environment import SessionManager
 
 logger = CustomLogging.get_logger(__name__)
-API = hug.API('parrotfish')
 EXIT = -1
 
 prompt_style = style_from_dict({
@@ -82,7 +81,6 @@ class CustomCompleter(WordCompleter):
                 yield c
 
 
-@hug.object(name='parrotfish', version='1.0.0', api=API)
 class ParrotFish(object):
     """Contains command and methods for updating and pushing protocols from Aquarium. Automatically
     exposes commands to the command line interface (CLI) using _Hug.
@@ -95,21 +93,20 @@ class ParrotFish(object):
         (Library, "source")
     ]
 
-    def __init__(self):
+    def __init__(self, session_manager):
         """
         ParrotFish constructor
-        """
-        self.session_manager = SessionManager()
 
-    def add_session_manager(self, new_sm):
-        self.session_manager = new_sm
+        :param session_manager: The session manager to use
+        :type session_manager: SessionManager
+        """
+        self.session_manager = session_manager
 
     def check_for_session(self):
         if self.session_manager.current is None:
             raise Exception(
                 "You must be logged in. Register an Aquarium session.")
 
-    
     def save(self):
         """Saves the environment"""
         self.session_manager.save()
@@ -125,7 +122,7 @@ class ParrotFish(object):
         return self.session_manager
 
     # 
-    # @hug.object.cli
+    # 
     # def push(self):
     #     self.check_for_session()
     #     code_files = self.get_code_files()
@@ -213,7 +210,7 @@ class ParrotFish(object):
     #     return code_files
 
     
-    @hug.object.cli
+    
     def session(self):
         return self.session_manager.current
 
@@ -241,7 +238,7 @@ class ParrotFish(object):
         return categories
 
     
-    @hug.object.cli
+    
     def fetch(self, category: hug.types.text):
         """ Fetch protocols from the current session & category and pull to local repo. """
         self.check_for_session()
@@ -256,7 +253,7 @@ class ParrotFish(object):
         self.save()
 
     
-    @hug.object.cli
+    
     def sessions(self):
         """List the current available sessions"""
         sessions = self.session_manager.sessions
@@ -264,7 +261,7 @@ class ParrotFish(object):
         return sessions
 
     # 
-    # @hug.object.cli
+    # 
     # def state(self):
     #     """ Get the current environment state. """
     #     logger.cli(format_json({
@@ -278,7 +275,7 @@ class ParrotFish(object):
     #
 
     
-    @hug.object.cli
+    
     def protocols(self):
         env = self.session_manager.current_env
         cats = env.protocols.dirs
@@ -289,7 +286,7 @@ class ParrotFish(object):
     #
 
     # 
-    # @hug.object.cli
+    # 
     # def protocols(self):
     #     """ Get and count the number of protocols on the local machine """
     #     self.check_for_session()
@@ -298,14 +295,14 @@ class ParrotFish(object):
     #         ['/'.join([f.code_parent.category, f.code_parent.name]) for f in files]))
     #
     # 
-    # @hug.object.cli
+    # 
     # def category(self):
     #     """ Get the current category of the environment. """
     #     logger.cli(self.session_manager.category)
     #     return self.session_manager.category
     #
     # 
-    # @hug.object.cli
+    # 
     # def set_category(self, category: hug.types.text):
     #     """ Set the category of the environment. Set "all" to use all categories. Use "categories" to find all
     #     categories. """
@@ -315,7 +312,6 @@ class ParrotFish(object):
     #     self.save()
 
     
-    @hug.object.cli
     def categories(self):
         """ Get all available categories and count """
         self.check_for_session()
@@ -324,8 +320,6 @@ class ParrotFish(object):
         category_count = {k: len(v) for k, v in categories.items()}
         logger.cli(format_json(category_count))
 
-    
-    @hug.object.cli
     def set_session(self, session_name: hug.types.text):
         """ Set the session by name. Use "sessions" to find all available sessions. """
         sessions = self.session_manager.sessions
@@ -338,14 +332,14 @@ class ParrotFish(object):
         self.save()
 
     
-    @hug.object.cli
+    
     def set(self, session_name: hug.types.text, category: hug.types.text):
         """Sets the session and category"""
         self.set_session(session_name)
         self.set_category(category)
 
     
-    @hug.object.cli
+    
     def move_repo(self, path: hug.types.text):
         """ Moves the current repo to another location. """
         path = Path(path).absolute()
@@ -357,7 +351,7 @@ class ParrotFish(object):
         self.save()
 
     
-    @hug.object.cli
+    
     def register(self, login: hug.types.text,
                  password: hug.types.text,
                  aquarium_url: hug.types.text,
@@ -374,7 +368,7 @@ class ParrotFish(object):
         return self
 
     
-    @hug.object.cli
+    
     def unregister(self, name):
         if name in self.session_manager.sessions:
             logger.cli("Unregistering {}: {}".format(
@@ -384,14 +378,14 @@ class ParrotFish(object):
             logger.cli("Session {} does not exist".format(name))
         self.save()
 
-    # @hug.object.cli
+    # 
     # def clear_history(self):
     #     if env_data.exists():
     #         os.remove(env_data.abspath)
     #     logger.cli("Cleared history")
 
     
-    @hug.object.cli
+    
     def ls(self):
         logger.cli(str(self.session_manager.abspath))
         logger.cli('\n' + self.session_manager.show())
@@ -450,7 +444,7 @@ class ParrotFish(object):
         path = prompt('> enter path: ', completer=PathCompleter(only_directories=True, expanduser=True))
         return (os.path.expanduser(path),), {}
 
-    @hug.object.cli
+    
     def shell(self):
         print("Entering interactive")
         res = 1
@@ -469,6 +463,8 @@ class ParrotFish(object):
 
 # TODO: if Parrotfish is updated, make sure there is a way to delete the old environment if somekind of error occurs
 def run_pfish():
+    # TODO: initialize parrot fish and fire.Fire it
+
     print(os.getcwd())
     try:
         ParrotFish.load()
@@ -479,7 +475,6 @@ def run_pfish():
                         "your counsel to"
                         "remove the old file and create a new one.")
     CustomLogging.set_level(logging.VERBOSE)
-    API.cli()
 
 
 if __name__ == '__main__':

@@ -16,6 +16,7 @@ logger = CustomLogging.get_logger(__name__)
 # where saved data is stored
 HERE = os.path.dirname(os.path.abspath(__file__))
 
+
 class SessionEnvironment(MagicDir):
 
     ENV_PKL = '.env_pkl'
@@ -115,7 +116,7 @@ class SessionEnvironment(MagicDir):
         # write codes
         for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
             logger.cli("    saving {}".format(accessor))
-            ot_dir.protocol.write(metadata[accessor]['content'])
+            ot_dir.get(accessor).write(metadata[accessor]['content'])
 
     def write_library(self, library):
         lib_dir = self.library_type_dir(library.category, library.name)
@@ -147,14 +148,42 @@ class SessionEnvironment(MagicDir):
 
 
 class SessionManager(MagicDir):
+    """
+    SessionManager reads and writes `:class:OperationType` and `:class:Library.`
+    The path of the directory (*SessionManagerName*) is saved in
+    *meta_dir/environment_data/meta_name.json* in *root*.
+
+    Example session structure::
+
+        meta_dir
+        └──environment_data
+            └──meta_name.json
+
+        SessionManagerName
+        |──SessionEnvironment1
+        |   └──Category1
+        |       |──OperationType1
+        |       |   |──OperationType1.json
+        |       |   |──OperationType1.rb
+        |       |   |──OperationType1__cost_model.rb
+        |       |   |──OperationType1__documentation.rb
+        |       |   └──OperationType1__precondition.rb
+        |       └──LibraryType1
+        |           |──LibraryType1.rb
+        |           └──LibraryType1.json
+        └──SessionEnvironment2
+            └── ...
+    """
 
     DEFAULT_METADATA_LOC = os.path.join(HERE, 'environment_data')
     DEFAULT_METADATA_NAME = 'env.json'
 
-    def __init__(self, name="FishTank", meta_dir=None, meta_name=None):
+    def __init__(self, dir, name="FishTank", meta_dir=None, meta_name=None):
         """
         SessionManager constructor
 
+        :param dir: directory
+        :type dir: str
         :param name: name of the folder
         :type name: str
         :param meta_dir: directory to store the metadata
@@ -163,6 +192,7 @@ class SessionManager(MagicDir):
         :type meta_name: str
         """
         super().__init__(name, push_up=False, check_attr=False)
+        self.set_dir(dir)
 
         # Add metadata
         # this is where session manager information will be stored
@@ -249,6 +279,7 @@ class SessionManager(MagicDir):
             indent=4)
         self.save_environments()
 
+    @classmethod
     def load(cls, path_to_metadata):
         """Load from the metadata"""
         with open(path_to_metadata, 'r') as f:
@@ -274,7 +305,7 @@ class SessionManager(MagicDir):
         For examples `dir="User/Documents/Fishtank"` would load a SessionManager with
         the name "Fishtank." Environments would be loaded from `User/Documents/FishTank/*/.env_pkl`
         """
-        sm = cls(name=os.path.basename(dir))
+        sm = cls(dir, name=os.path.basename(dir))
         env_pkls = glob(os.path.join(dir, "*", SessionEnvironment.ENV_PKL))
         for env_pkl in env_pkls:
             session_env = SessionEnvironment.load_from_pkl(env_pkl)

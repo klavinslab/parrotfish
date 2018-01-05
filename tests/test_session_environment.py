@@ -3,7 +3,7 @@ from pydent import AqSession
 import os
 
 
-def test_operation_type_controller():
+def test_operation_type_controller(tmpdir):
     """This test creates an session_environment and writes an OperationType.
     It then reads it. Its expected the loaded OperationType and OperationType
     retrieved from the AqSession will have equivalent attributes."""
@@ -11,6 +11,7 @@ def test_operation_type_controller():
     ot = session.OperationType.all()[-1]
 
     session_env = SessionEnvironment('mysession', session)
+    session_env.set_dir(tmpdir)
 
     session_env.write_operation_type(ot)
 
@@ -23,7 +24,7 @@ def test_operation_type_controller():
     assert loaded_ot.cost_model.dump() == ot.cost_model.dump()
 
 
-def test_library_controller():
+def test_library_controller(tmpdir):
     """This test creates an session_environment and writes an Library.
     It then reads it. Its expected the loaded Library and Library
     retrieved from the AqSession will have equivalent attributes."""
@@ -31,6 +32,7 @@ def test_library_controller():
     lib = session.Library.all()[-1]
 
     session_env = SessionEnvironment('mysession', session)
+    session_env.set_dir(tmpdir)
 
     session_env.write_library(lib)
 
@@ -40,9 +42,9 @@ def test_library_controller():
     assert loaded_lib.source.dump() == loaded_lib.source.dump()
 
 
-def test_session_manager_register():
+def test_session_manager_register(tmpdir):
     """This tests that register session will """
-    env = SessionManager()
+    env = SessionManager(tmpdir)
 
     assert not hasattr(env, "nursery")
     env.register_session("vrana", "Mountain5", 'http://52.27.43.242:81/', "nursery")
@@ -54,8 +56,8 @@ def test_session_manager_register():
     assert session.url == 'http://52.27.43.242:81/'
 
 
-def test_session_manager_set_current():
-    env = SessionManager()
+def test_session_manager_set_current(tmpdir):
+    env = SessionManager(tmpdir)
     env.register_session("vrana", "Mountain5", 'http://52.27.43.242:81/', "nursery")
     env.register_session("vrana", "Mountain5", 'http://52.27.43.242:81/', "production")
     assert env.current is None
@@ -75,7 +77,7 @@ def test_session_manager_set_current():
 
 def test_session_manage_mkdirs(tmpdir):
     """This tests to ensure the directories are created as expected"""
-    env = SessionManager()
+    env = SessionManager(tmpdir)
     env.register_session("vrana", "Mountain5", 'http://52.27.43.242:81/', "nursery")
     env.register_session("vrana", "Mountain5", 'http://52.27.43.242:81/', "production")
 
@@ -94,7 +96,7 @@ def test_session_manage_mkdirs(tmpdir):
 
 def test_session_manager_save_and_load_environments(tmpdir):
 
-    sm1 = SessionManager()
+    sm1 = SessionManager(tmpdir)
     sm1.set_dir(tmpdir)
     sm1.register_session("vrana", "Mountain5", 'http://52.27.43.242:81/', "nursery")
     sm1.register_session("vrana", "Mountain5", 'http://52.27.43.242:81/', "production")
@@ -107,15 +109,14 @@ def test_session_manager_save_and_load_environments(tmpdir):
     assert hasattr(sm2, "production")
 
 
-def test_session_manager_save_and_load():
+# TODO: better test for loaded_sm
+def test_session_manager_save_and_load(tmpdir):
 
-    sm1 = SessionManager()
-    sm1.set_dir('.')
-    sm1.register_session("vrana", "Mountain5", 'http://52.27.43.242:81/', "nursery")
-    sm1.register_session("vrana", "Mountain5", 'http://52.27.43.242:81/', "production")
-    sm1.set_dir('.')
+    sm = SessionManager(tmpdir, meta_name="test_env.json")
+    sm.register_session("vrana", "Mountain5", 'http://52.27.43.242:81/', "nursery")
+    sm.register_session("vrana", "Mountain5", 'http://52.27.43.242:81/', "production")
 
-    sm1.save()
+    sm.save()
 
-    sm2 = SessionManager.load()
-    pass
+    loaded_sm = SessionManager.load(sm.metadata.env.abspath)
+    assert len(loaded_sm._children) == len(sm._children)
