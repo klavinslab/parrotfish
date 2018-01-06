@@ -18,7 +18,23 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 class SessionEnvironment(MagicDir):
+    """
 
+    Example::
+
+        SessionEnvironment1
+           └──Category1
+               |──OperationType1
+               |   |──OperationType1.json
+               |   |──OperationType1.rb
+               |   |──OperationType1__cost_model.rb
+               |   |──OperationType1__documentation.rb
+               |   └──OperationType1__precondition.rb
+               └──LibraryType1
+                   |──LibraryType1.rb
+                   └──LibraryType1.json
+
+    """
     ENV_PKL = '.env_pkl'
 
     def __init__(self, name, session):
@@ -56,12 +72,36 @@ class SessionEnvironment(MagicDir):
             with open(env_pkl, 'rb') as f:
                 return dill.load(f)
 
+    def get_category_dir(self, category):
+        cat_dirname = sanitize_filename(category)
+        cat_dir = self.protocols.add(sanitize_attribute(cat_dirname))
+        return cat_dir
+
+    @property
+    def categories(self):
+        """Return a list of categories (MagicDir)"""
+        return self.protocols.list_dirs()
+
+    # @property
+    # def protocols(self, category):
+    #     cat_dir = self.get_category_dir(category)
+    #     return cat_dir.list_dirs()
+    #
+    # @property
+    # def operation_types(self, category):
+    #     protocols = self.protocols
+    #     return [p for p in protocols if p.has("protocol")]
+    #
+    # @property
+    # def libraries(self, category):
+    #     protocols = self.protocols
+    #     return [p for p in protocols if p.has("source")]
+
     # Methods for writing and reading OperationType and Library
     # TODO: library and operation type methods are pretty similar, we could generalize but there's only two different models...
-    def operation_type_dir(self, category, operation_type_name):
+    def get_operation_type_dir(self, category, operation_type_name):
         # add the category directory to the protocols directory
-        cat_dirname = sanitize_filename(category)
-        cat_dir = self.protocols.add(sanitize_attribute(category))
+        cat_dir = self.get_category_dir(category)
 
         # add a new folder using operation type name
         basename = sanitize_filename(operation_type_name)
@@ -76,10 +116,9 @@ class SessionEnvironment(MagicDir):
 
         return ot_dir
 
-    def library_type_dir(self, category, library_name):
+    def get_library_type_dir(self, category, library_name):
         # add the category directory to the protocols directory
-        cat_dirname = sanitize_filename(category)
-        cat_dir = self.protocols.add(cat_dirname)
+        cat_dir = self.get_category_dir(category)
 
         # add a new folder using operation type name
         basename = sanitize_filename(library_name)
@@ -92,7 +131,7 @@ class SessionEnvironment(MagicDir):
         return lib_dir
 
     def write_operation_type(self, operation_type):
-        ot_dir = self.operation_type_dir(operation_type.category, operation_type.name)
+        ot_dir = self.get_operation_type_dir(operation_type.category, operation_type.name)
 
         include = {
             'field_types': 'allowable_field_types'
@@ -119,7 +158,7 @@ class SessionEnvironment(MagicDir):
             ot_dir.get(accessor).write(metadata[accessor]['content'])
 
     def write_library(self, library):
-        lib_dir = self.library_type_dir(library.category, library.name)
+        lib_dir = self.get_library_type_dir(library.category, library.name)
 
         # write json
         lib_dir.meta.dump_json(library.dump(include={'source'}), indent=4)
@@ -128,7 +167,7 @@ class SessionEnvironment(MagicDir):
         lib_dir.source.write(library.code('source').content)
 
     def read_operation_type(self, category, name):
-        ot_dir = self.operation_type_dir(category, name)
+        ot_dir = self.get_operation_type_dir(category, name)
         metadata = ot_dir.meta.load_json()  # load the meta data from the .json file
         ot = OperationType.load(metadata)
 
@@ -136,14 +175,16 @@ class SessionEnvironment(MagicDir):
         ot.precondition.content = ot_dir.precondition.read()
         ot.documentation.content = ot_dir.documentation.read()
         ot.cost_model.content = ot_dir.cost_model.read()
+        ot.connect_to_session(self.session)
         return ot
 
     def read_library_type(self, category, name):
-        lib_dir = self.library_type_dir(category, name)
+        lib_dir = self.get_library_type_dir(category, name)
         metadata = lib_dir.meta.load_json()
         lib = Library.load(metadata)
 
         lib.source.content = lib_dir.source.read()
+        lib.connect_to_session(self.session)
         return lib
 
 
@@ -215,6 +256,11 @@ class SessionManager(MagicDir):
         session_env = SessionEnvironment(name, session)
         self._add_session_env(session_env)
 
+    def remove_session(self, name):
+        session = self.get(name)
+        session.remove_parent()
+        session.rmdirs()
+
     def _add_session_env(self, session_env):
         """Adds the session environment to the session manager"""
         self._add(session_env.name, session_env, push_up=False, check_attr=False)
@@ -280,8 +326,13 @@ class SessionManager(MagicDir):
         self.save_environments()
 
     @classmethod
-    def load(cls, path_to_metadata):
+    def load(cls, path_to_metadata=None):
         """Load from the metadata"""
+
+        if path_to_metadata is None:
+            path_to_metadata = os.path.join(
+                SessionManager.DEFAULT_METADATA_LOC, SessionManager.DEFAULT_METADATA_NAME)
+
         with open(path_to_metadata, 'r') as f:
             meta = json.load(f)
             if __version__ != meta['version']:

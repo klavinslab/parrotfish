@@ -111,32 +111,33 @@ class ParrotFish(object):
         """Saves the environment"""
         self.session_manager.save()
 
-    @classmethod
     def load(self):
         """Loads the environment"""
         if not self.session_manager.metadata.exists():
-            self.session_manager = SessionManager()
+            self.session_manager = SessionManager('.')
         else:
-            self.session_manager = SessionManager(self.session_manager)
-            self.session_manager.load()
+            self.session_manager = SessionManager.load()
         return self.session_manager
 
-    # 
-    # 
-    # def push(self):
-    #     self.check_for_session()
-    #     code_files = self.get_code_files()
-    #
-    #     if not self.session_manager.use_all_categories():
-    #         code_files = [
-    #             f for f in code_files if f.code_parent.category == self.session_manager.category]
-    #
-    #     for c in code_files:
-    #         if self.ok_to_push(c):
-    #             c.code.content = c.read('r')
-    #             c.code.update()
-    #             # pass
-    #     self.save()
+    def push(self):
+        """Save protocol"""
+        self.check_for_session()
+        current_env = self.session_manager.current_env
+        categories = current_env.categories
+        for cat in categories:
+            for protocol in cat.list_dirs():
+                if protocol.has("source"):
+                    # then its a Library
+                    local_lib = current_env.read_library_type(cat.name, protocol.name)
+                    local_lib.code("source").update()
+                if protocol.has("protocol"):
+                    # then its an OperationType
+                    local_ot = current_env.read_operation_type(cat.name, protocol.name)
+                    for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
+                        logger.cli("Updating {}/{} ({})".format(cat.name, local_ot.name, accessor))
+                        code = getattr(local_ot, accessor)
+                        code.update()
+        self.save()
     #
     # 
     # def fetch_parent_from_server(self, code_file):
@@ -209,21 +210,20 @@ class ParrotFish(object):
     #     code_files = [f for f in files if hasattr(f, 'code_parent')]
     #     return code_files
 
-    
-    
     def session(self):
+        """Returns the current session"""
         return self.session_manager.current
 
-    
     def sessions_json(self):
+        """Returns a dictionary of sessions"""
         sess_dict = {}
         for session_name, session in self.session_manager.sessions.items():
             val = str(session)
             sess_dict[session_name] = val
         return sess_dict
 
-    
     def get_categories(self):
+        """Returns dictionary of category names and Library/OperationType"""
         categories = {}
         operation_types = self.session_manager.current.OperationType.all()
         libraries = self.session_manager.current.Library.all()
@@ -236,32 +236,30 @@ class ParrotFish(object):
             l.append(lib)
             categories[lib.category] = l
         return categories
-
-    
     
     def fetch(self, category: hug.types.text):
         """ Fetch protocols from the current session & category and pull to local repo. """
         self.check_for_session()
         ots = self.session_manager.current.OperationType.where({"category": category})
+        libs = self.session_manager.current.Library.where({"category": category})
         logger.cli("{} operation_types found".format(len(ots)))
         logger.cli("This may take awhile...")
         for ot in ots:
-            print(ot)
             logger.cli("Saving {}".format(ot.name))
             curr_env = self.session_manager.current_env
             curr_env.write_operation_type(ot)
+        for lib in libs:
+            logger.cli("Saving {}".format(lib.name))
+            curr_env = self.session_manager.current_env
+            curr_env.write_library(lib)
         self.save()
 
-    
-    
     def sessions(self):
         """List the current available sessions"""
         sessions = self.session_manager.sessions
         logger.cli(format_json(self.sessions_json()))
         return sessions
 
-    # 
-    # 
     # def state(self):
     #     """ Get the current environment state. """
     #     logger.cli(format_json({
@@ -273,10 +271,9 @@ class ParrotFish(object):
     #         "repo": str(self.session_manager.repo.abspath)
     #     }))
     #
-
-    
     
     def protocols(self):
+        """Print category and protocol names"""
         env = self.session_manager.current_env
         cats = env.protocols.dirs
         for cat in env.protocols.dirs:
@@ -331,17 +328,13 @@ class ParrotFish(object):
         self.session_manager.set_current(session_name)
         self.save()
 
-    
-    
     def set(self, session_name: hug.types.text, category: hug.types.text):
         """Sets the session and category"""
         self.set_session(session_name)
         self.set_category(category)
-
-    
     
     def move_repo(self, path: hug.types.text):
-        """ Moves the current repo to another location. """
+        """Moves the current repo to another location."""
         path = Path(path).absolute()
         if not path.is_dir():
             raise Exception("Path {} does not exist".format(str(path)))
@@ -349,14 +342,12 @@ class ParrotFish(object):
             self.session_manager.abspath, path))
         self.session_manager.move_repo(path)
         self.save()
-
-    
     
     def register(self, login: hug.types.text,
                  password: hug.types.text,
                  aquarium_url: hug.types.text,
                  session_name: hug.types.text):
-        """ Registers a new session. """
+        """Registers a new session."""
         try:
             self.session_manager.register_session(login, password,
                                 aquarium_url, session_name)
@@ -367,8 +358,6 @@ class ParrotFish(object):
         self.save()
         return self
 
-    
-    
     def unregister(self, name):
         if name in self.session_manager.sessions:
             logger.cli("Unregistering {}: {}".format(
@@ -384,9 +373,8 @@ class ParrotFish(object):
     #         os.remove(env_data.abspath)
     #     logger.cli("Cleared history")
 
-    
-    
     def ls(self):
+        """List dictionary structure for the session manager"""
         logger.cli(str(self.session_manager.abspath))
         logger.cli('\n' + self.session_manager.show())
 
@@ -444,7 +432,6 @@ class ParrotFish(object):
         path = prompt('> enter path: ', completer=PathCompleter(only_directories=True, expanduser=True))
         return (os.path.expanduser(path),), {}
 
-    
     def shell(self):
         print("Entering interactive")
         res = 1
@@ -478,4 +465,5 @@ def run_pfish():
 
 
 if __name__ == '__main__':
-    run_pfish()
+    session_manager = SessionManager('.')
+    pf = ParrotFish(session_manager)

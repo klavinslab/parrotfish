@@ -15,21 +15,18 @@ def test_save(pfish):
 
 
 def test_register(pfish):
+    assert len(pfish.session_manager.sessions) == 0
     pfish.register("vrana", "Mountain5", "http://52.27.43.242:81/", "nursery")
-    print(pfish.sessions())
+    assert len(pfish.session_manager.sessions) == 1
+    pfish.unregister("nursery")
+    assert len(pfish.session_manager.sessions) == 0
 
 
 def test_get_categories(pfish):
     pfish.register("vrana", "Mountain5", "http://52.27.43.242:81/", "nursery")
     pfish.set_session("nursery")
     cats = pfish.get_categories()
-    print(cats)
-
-def test_categories(pfish):
-    pfish.register("vrana", "Mountain5", "http://52.27.43.242:81/", "nursery")
-    pfish.set_session("nursery")
-    cats = pfish.categories()
-    print(cats)
+    assert len(cats) > 1
 
 
 def test_fetch(pfish):
@@ -46,6 +43,34 @@ def test_protocols(pfish):
     pfish.register("vrana", "Mountain5", "http://52.27.43.242:81/", "nursery")
     pfish.set_session("nursery")
     pfish.protocols()
+
+
+def test_move_repo(pfish, tmpdir_factory):
+    pfish.register("vrana", "Mountain5", "http://52.27.43.242:81/", "nursery")
+    pfish.set_session("nursery")
+    pfish.fetch("ParrotFishTest")
+
+    olddir = pfish.session_manager.abspath
+    newdir = tmpdir_factory.mktemp('data')
+
+    # move the repo
+    pfish.move_repo(newdir)
+
+    assert os.path.dirname(pfish.session_manager.abspath) == str(newdir)
+
+def test_push(pfish):
+    pfish.register("vrana", "Mountain5", "http://52.27.43.242:81/", "nursery")
+    pfish.set_session("nursery")
+    pfish.fetch("ParrotFishTest")
+
+    categories = pfish.session_manager.current_env.categories
+
+    cat = pfish.session_manager.current_env.categories[0]
+    protocol = cat.list_dirs()[0]
+    print(protocol.name)
+    protocol.protocol.write("Whatever")
+
+    pfish.push()
 #
 # def test_fetch(sessions):
 #     pfish.set_category("pfishTest")
