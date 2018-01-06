@@ -190,7 +190,7 @@ class SessionEnvironment(MagicDir):
 
 class SessionManager(MagicDir):
     """
-    SessionManager reads and writes `:class:OperationType` and `:class:Library.`
+    SessionManager reads and writes :class:`OperationType` and :class:`Library`.
     The path of the directory (*SessionManagerName*) is saved in
     *meta_dir/environment_data/meta_name.json* in *root*.
 

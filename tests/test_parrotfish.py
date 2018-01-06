@@ -70,7 +70,7 @@ def test_push(pfish):
     print(protocol.name)
     protocol.protocol.write("Whatever")
 
-    pfish.push()
+    pfish.push_all()
 #
 # def test_fetch(sessions):
 #     pfish.set_category("pfishTest")

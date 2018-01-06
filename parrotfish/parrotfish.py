@@ -1,20 +1,18 @@
 import itertools
 import os
 import re
-from os import sep
 from pathlib import Path
 
 import hug
-import inflection
 from hug import API
-from parrotfish.utils import compare_content, CustomLogging, logging, format_json, sanitize_filename
+from parrotfish.session_environment import SessionManager
+from parrotfish.utils import CustomLogging, logging, format_json
 from prompt_toolkit import prompt
 from prompt_toolkit.contrib.completers import WordCompleter, PathCompleter
 from prompt_toolkit.styles import style_from_dict
 from prompt_toolkit.token import Token
 from pydent.models import OperationType, Library
 from requests.exceptions import InvalidSchema
-from parrotfish.session_environment import SessionManager
 
 logger = CustomLogging.get_logger(__name__)
 EXIT = -1
@@ -119,25 +117,31 @@ class ParrotFish(object):
             self.session_manager = SessionManager.load()
         return self.session_manager
 
-    def push(self):
+    def push_category(self, category):
+        """Push all :class:`OperationType` and :class:`Library` in a category"""
+        current_env = self.session_manager.current_env
+        for protocol in category.list_dirs():
+            if protocol.has("source"):
+                # then its a Library
+                local_lib = current_env.read_library_type(category.name, protocol.name)
+                local_lib.code("source").update()
+            if protocol.has("protocol"):
+                # then its an OperationType
+                local_ot = current_env.read_operation_type(category.name, protocol.name)
+                for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
+                    logger.cli("Updating {}/{} ({})".format(category.name, local_ot.name, accessor))
+                    code = getattr(local_ot, accessor)
+                    code.update()
+        self.save()
+
+    def push_all(self):
         """Save protocol"""
         self.check_for_session()
         current_env = self.session_manager.current_env
         categories = current_env.categories
         for cat in categories:
-            for protocol in cat.list_dirs():
-                if protocol.has("source"):
-                    # then its a Library
-                    local_lib = current_env.read_library_type(cat.name, protocol.name)
-                    local_lib.code("source").update()
-                if protocol.has("protocol"):
-                    # then its an OperationType
-                    local_ot = current_env.read_operation_type(cat.name, protocol.name)
-                    for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
-                        logger.cli("Updating {}/{} ({})".format(cat.name, local_ot.name, accessor))
-                        code = getattr(local_ot, accessor)
-                        code.update()
-        self.save()
+            self.push_category(cat)
+
     #
     # 
     # def fetch_parent_from_server(self, code_file):
@@ -236,7 +240,7 @@ class ParrotFish(object):
             l.append(lib)
             categories[lib.category] = l
         return categories
-    
+
     def fetch(self, category: hug.types.text):
         """ Fetch protocols from the current session & category and pull to local repo. """
         self.check_for_session()
@@ -271,7 +275,7 @@ class ParrotFish(object):
     #         "repo": str(self.session_manager.repo.abspath)
     #     }))
     #
-    
+
     def protocols(self):
         """Print category and protocol names"""
         env = self.session_manager.current_env
@@ -308,7 +312,7 @@ class ParrotFish(object):
     #     self.session_manager.category = category
     #     self.save()
 
-    
+
     def categories(self):
         """ Get all available categories and count """
         self.check_for_session()
@@ -332,7 +336,7 @@ class ParrotFish(object):
         """Sets the session and category"""
         self.set_session(session_name)
         self.set_category(category)
-    
+
     def move_repo(self, path: hug.types.text):
         """Moves the current repo to another location."""
         path = Path(path).absolute()
@@ -342,7 +346,7 @@ class ParrotFish(object):
             self.session_manager.abspath, path))
         self.session_manager.move_repo(path)
         self.save()
-    
+
     def register(self, login: hug.types.text,
                  password: hug.types.text,
                  aquarium_url: hug.types.text,
@@ -350,7 +354,7 @@ class ParrotFish(object):
         """Registers a new session."""
         try:
             self.session_manager.register_session(login, password,
-                                aquarium_url, session_name)
+                                                  aquarium_url, session_name)
         except InvalidSchema:
             raise InvalidSchema("Missing schema for {}. Did you forget the \"http://\"?"
                                 .format(aquarium_url))
@@ -382,7 +386,7 @@ class ParrotFish(object):
     ########  Shell Methods  ###########
     ####################################
 
-    
+
     def command_completer(self):
         def add_completions(*iterables):
             words = []

@@ -20,6 +20,5 @@ def pfish(tmpdir_factory):
     session_manager = SessionManager(tmpdir)
     pfish = ParrotFish(session_manager)
     return pfish
-#
-#
-# CustomLogging.set_level(logging.VERBOSE)
+
+CustomLogging.set_level(logging.VERBOSE)
