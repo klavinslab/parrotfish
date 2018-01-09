@@ -79,6 +79,7 @@ class Shell(object):
         completions = []
         if self.cli._session_manager.current_session:
             categories = list(self.cli._get_categories().keys())
+            print(categories)
             completions += add_completions(['fetch'], categories)
             completions += add_completions(['push_category'], categories)
         if self.cli._session_manager.sessions:

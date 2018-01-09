@@ -177,7 +177,7 @@ class SessionEnvironment(MagicDir):
         ot_dir.add_file('{}.rb'.format(basename), attr='protocol')
         ot_dir.add_file('{}__precondition.rb'.format(basename), attr='precondition')
         ot_dir.add_file('{}__cost_model.rb'.format(basename), attr='cost_model')
-        ot_dir.add_file('{}__documentation.rb'.format(basename), attr='documentation')
+        ot_dir.add_file('{}__documentation.md'.format(basename), attr='documentation')
 
         return ot_dir
 
