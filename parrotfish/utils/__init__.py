@@ -5,7 +5,7 @@ import inflection
 
 from .diff import compare_content
 from .log import CustomLogging, logging
-
+from .inspect_tools import get_callables
 def sanitize_filename(name):
     return name.replace(sep, '_')
 

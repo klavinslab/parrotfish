@@ -1,89 +1,19 @@
-import itertools
 import os
-import re
 from pathlib import Path
 
-import hug
-from hug import API
+import fire
+
 from parrotfish.session_environment import SessionManager
 from parrotfish.utils import CustomLogging, logging, format_json
-from prompt_toolkit import prompt
-from prompt_toolkit.contrib.completers import WordCompleter, PathCompleter
-from prompt_toolkit.styles import style_from_dict
-from prompt_toolkit.token import Token
 from pydent.models import OperationType, Library
 from requests.exceptions import InvalidSchema
 
 logger = CustomLogging.get_logger(__name__)
-EXIT = -1
-
-prompt_style = style_from_dict({
-    # User input.
-    Token: '#ff0066',
-
-    # Prompt.
-    Token.Username: '#884444 italic',
-    Token.At: '#00aa00',
-    Token.Colon: '#00aa00',
-    Token.Pound: '#00aa00',
-    Token.Host: '#000088 bg:#aaaaff',
-    Token.Path: '#884444 underline',
-
-    # Make a selection reverse/underlined.
-    # (Use Control-Space to select.)
-    Token.SelectedText: 'reverse underline',
-    Token.Toolbar: '#ffffff bg:#333333',
-})
-
-
-# def get_prompt_tokens(cli):
-#     login = '<not logged in>'
-#     url = '<???>'
-#
-#     if self.session_manager.current:
-#         login = self.session_manager.current.login
-#         url = self.session_manager.current.url
-#
-#     return [
-#         (Token.Username, login),
-#         (Token.At, '@'),
-#         (Token.Host, url),
-#         (Token.Colon, ':'),
-#         (Token.Pound, '{}'.format(self.session_manager.session_name)),
-#         (Token.Pound, '#{} '.format(self.session_manager.category)),
-#     ]
-#
-
-class CustomCompleter(WordCompleter):
-    """
-    Matches commands only at current text position.
-    """
-
-    def __init__(self, words, ignore_case=False, meta_dict=None, match_middle=False):
-        super().__init__(words, ignore_case=ignore_case, WORD=False, meta_dict=meta_dict, sentence=True,
-                         match_middle=match_middle)
-
-    def get_completions(self, document, complete_event):
-        """Override completion method that retrieves only completions whose length less than or equal
-        to the current completion text. This eliminates excessivlely long completion lists"""
-
-        get_words = lambda text: re.split('\s+', text)
-        completions = list(super().get_completions(document, complete_event))
-
-        # filter completions by length of word
-        text_before_cursor = document.text_before_cursor
-        words_before_cursor = get_words(text_before_cursor)
-        for c in completions:
-            cwords = get_words(c.text)
-            if len(cwords) <= len(words_before_cursor):
-                yield c
 
 
 class ParrotFish(object):
     """Contains command and methods for updating and pushing protocols from Aquarium. Automatically
-    exposes commands to the command line interface (CLI) using _Hug.
-
-    .. _Hug: http://www.hug.rest/
+    exposes commands to the command line interface (CLI) using Fire.
     """
 
     controllers = [
@@ -91,7 +21,7 @@ class ParrotFish(object):
         (Library, "source")
     ]
 
-    def __init__(self, session_manager):
+    def __init__(self, session_manager=None):
         """
         ParrotFish constructor
 
@@ -109,12 +39,18 @@ class ParrotFish(object):
         """Saves the environment"""
         self.session_manager.save()
 
+    def print_env(self):
+        logger.cli(str(self.session_manager))
+
     def load(self):
         """Loads the environment"""
         if not self.session_manager.metadata.exists():
             self.session_manager = SessionManager('.')
         else:
             self.session_manager = SessionManager.load()
+            logger.cli("Environment file loaded ({})".format(self.session_manager.metadata.abspath))
+        logger.cli("environment loaded")
+        self.print_env()
         return self.session_manager
 
     def push_category(self, category):
@@ -143,7 +79,7 @@ class ParrotFish(object):
             self.push_category(cat)
 
     #
-    # 
+    #
     # def fetch_parent_from_server(self, code_file):
     #     code_parent = code_file.code_parent
     #
@@ -162,7 +98,7 @@ class ParrotFish(object):
     # def get_controller_interface(model_name):
     #     return self.session_manager.current.model_interface(model_name)
     #
-    # 
+    #
     # def fetch_content(self, controller_instance):
     #     """
     #     Fetches code content from Aquarium model (e.g. ot.code('protocol')
@@ -176,7 +112,7 @@ class ParrotFish(object):
     #         if type(controller_instance) is controller:
     #             return controller_instance.code(accessor).content
     #
-    # 
+    #
     # def ok_to_push(self, code_file):
     #     # Check last modified
     #     # modified_at = code_file.abspath.stat().st_mtime
@@ -205,7 +141,7 @@ class ParrotFish(object):
     #         return False
     #     return True
     #
-    # 
+    #
     # def get_code_files(self):
     #     if not self.session_managerironment().session_dir().exists():
     #         logger.cli("There are no protocols in this repo.")
@@ -241,7 +177,7 @@ class ParrotFish(object):
             categories[lib.category] = l
         return categories
 
-    def fetch(self, category: hug.types.text):
+    def fetch(self, category):
         """ Fetch protocols from the current session & category and pull to local repo. """
         self.check_for_session()
         ots = self.session_manager.current.OperationType.where({"category": category})
@@ -286,8 +222,8 @@ class ParrotFish(object):
 
     #
 
-    # 
-    # 
+    #
+    #
     # def protocols(self):
     #     """ Get and count the number of protocols on the local machine """
     #     self.check_for_session()
@@ -295,16 +231,16 @@ class ParrotFish(object):
     #     logger.cli(format_json(
     #         ['/'.join([f.code_parent.category, f.code_parent.name]) for f in files]))
     #
-    # 
-    # 
+    #
+    #
     # def category(self):
     #     """ Get the current category of the environment. """
     #     logger.cli(self.session_manager.category)
     #     return self.session_manager.category
     #
-    # 
-    # 
-    # def set_category(self, category: hug.types.text):
+    #
+    #
+    # def set_category(self, category):
     #     """ Set the category of the environment. Set "all" to use all categories. Use "categories" to find all
     #     categories. """
     #     self.check_for_session()
@@ -321,7 +257,7 @@ class ParrotFish(object):
         category_count = {k: len(v) for k, v in categories.items()}
         logger.cli(format_json(category_count))
 
-    def set_session(self, session_name: hug.types.text):
+    def set_session(self, session_name):
         """ Set the session by name. Use "sessions" to find all available sessions. """
         sessions = self.session_manager.sessions
         if session_name not in sessions:
@@ -332,12 +268,12 @@ class ParrotFish(object):
         self.session_manager.set_current(session_name)
         self.save()
 
-    def set(self, session_name: hug.types.text, category: hug.types.text):
+    def set(self, session_name, category):
         """Sets the session and category"""
         self.set_session(session_name)
         self.set_category(category)
 
-    def move_repo(self, path: hug.types.text):
+    def move_repo(self, path):
         """Moves the current repo to another location."""
         path = Path(path).absolute()
         if not path.is_dir():
@@ -347,10 +283,10 @@ class ParrotFish(object):
         self.session_manager.move_repo(path)
         self.save()
 
-    def register(self, login: hug.types.text,
-                 password: hug.types.text,
-                 aquarium_url: hug.types.text,
-                 session_name: hug.types.text):
+    def register(self, login,
+                 password,
+                 aquarium_url,
+                 session_name):
         """Registers a new session."""
         try:
             self.session_manager.register_session(login, password,
@@ -371,7 +307,7 @@ class ParrotFish(object):
             logger.cli("Session {} does not exist".format(name))
         self.save()
 
-    # 
+    #
     # def clear_history(self):
     #     if env_data.exists():
     #         os.remove(env_data.abspath)
@@ -382,90 +318,23 @@ class ParrotFish(object):
         logger.cli(str(self.session_manager.abspath))
         logger.cli('\n' + self.session_manager.show())
 
-    ####################################
-    ########  Shell Methods  ###########
-    ####################################
-
-
-    def command_completer(self):
-        def add_completions(*iterables):
-            words = []
-            products = itertools.product(*iterables)
-            for prod in products:
-                for i, word in enumerate(prod):
-                    partial_prod = prod[:i + 1]
-                    words.append(' '.join(partial_prod))
-            return list(set(words))
-
-        completions = []
-        if self.session_manager.current:
-            categories = list(self.get_categories().keys())
-            completions += add_completions(['set_category'], categories)
-        if self.session_manager.sessions:
-            completions += add_completions(['set_session'], self.session_manager.sessions.keys())
-        completions += ["exit"]
-        completions += list(API.cli.commands.keys())
-        return CustomCompleter(list(set(completions)))
-
-    def parse_shell_command(self, command):
-        args = re.split('\s+', command)
-        fxn_name = args[0]
-        args = args[1:]
-        kwargs = {}
-        if fxn_name == '-h' or fxn_name == '--help':
-            print(API.cli)
-        elif fxn_name.startswith('exit'):
-            return EXIT
-        cmd = API.cli.commands.get(fxn_name, None)
-        if cmd:
-            if args and args[0] in ['-h', '--help']:
-                print(cmd.interface.__doc__)
-            else:
-                if hasattr(self, '{}_interactive'.format(fxn_name)):
-                    args, kwargs = getattr(self, '{}_interactive'.format(fxn_name))()
-                try:
-                    return cmd.interface(*args, **kwargs)
-                except Exception as e:
-                    logger.cli(str(e.args))
-        elif fxn_name.strip() == '':
-            pass
-        else:
-            print("Cmd {} not found. Use '-h' or '--help' for help. Click tab for available commands.".format(fxn_name))
-
-    def move_repo_interactive(self):
-        path = prompt('> enter path: ', completer=PathCompleter(only_directories=True, expanduser=True))
-        return (os.path.expanduser(path),), {}
-
-    def shell(self):
-        print("Entering interactive")
-        res = 1
-        while not res == EXIT:
-            def get_bottom_toolbar_tokens(cli):
-                # return [(Token.Toolbar, ' \'-h\' or \'--help\' for help | \'exit\' to exit')]
-                return [(Token.Toolbar, 'Dir: {}'.format(str(self.session_manager.repo.abspath)))]
-
-            answer = prompt(completer=self.command_completer(),
-                            get_prompt_tokens=get_prompt_tokens,
-                            style=prompt_style,
-                            get_bottom_toolbar_tokens=get_bottom_toolbar_tokens)
-            res = self.parse_shell_command(answer)
-        print("goodbye!")
-
 
 # TODO: if Parrotfish is updated, make sure there is a way to delete the old environment if somekind of error occurs
 def run_pfish():
     # TODO: initialize parrot fish and fire.Fire it
-
-    print(os.getcwd())
-    try:
-        ParrotFish.load()
-    except:
-        raise Exception("Something went wrong while loading an old environment file."
-                        "This can happen if there was an update to parrotfish."
-                        "If you cannot resolve the error, run 'pfish clear_history' in "
-                        "your counsel to"
-                        "remove the old file and create a new one.")
     CustomLogging.set_level(logging.VERBOSE)
+    sm = SessionManager('.')
+    pf = ParrotFish(sm)
+    pf.load()
+    fire.Fire(pf)
+
+    # except:
+    #     raise Exception("Something went wrong while loading an old environment file."
+    #                     "This can happen if there was an update to parrotfish."
+    #                     "If you cannot resolve the error, run 'pfish clear_history' in "
+    #                     "your counsel to"
+    #                     "remove the old file and create a new one.")
+
 
 
 if __name__ == '__main__':

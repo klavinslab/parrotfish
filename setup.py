@@ -70,7 +70,7 @@ setup(
     tests_require=tests_require,
     entry_points={
         'console_scripts': [
-                'pfish = parrotfish.parrotfish:run_pfish'
+                'pfish = parrotfish.core:run'
         ],
     }
 )

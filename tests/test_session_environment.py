@@ -1,16 +1,16 @@
 from parrotfish.session_environment import SessionEnvironment, SessionManager
 from pydent import AqSession
 import os
+from cryptography.fernet import Fernet
 
-
-def test_operation_type_controller(tmpdir):
+def test_operation_type_controller(tmpdir, credentials):
     """This test creates an session_environment and writes an OperationType.
     It then reads it. Its expected the loaded OperationType and OperationType
     retrieved from the AqSession will have equivalent attributes."""
-    session = AqSession('vrana', 'Mountain5', 'http://52.27.43.242:81/')
+    session = AqSession(**credentials['nursery'])
     ot = session.OperationType.all()[-1]
 
-    session_env = SessionEnvironment('mysession', session)
+    session_env = SessionEnvironment(**credentials['nursery'], encryption_key=Fernet.generate_key())
     session_env.set_dir(tmpdir)
 
     session_env.write_operation_type(ot)
@@ -24,14 +24,14 @@ def test_operation_type_controller(tmpdir):
     assert loaded_ot.cost_model.dump() == ot.cost_model.dump()
 
 
-def test_library_controller(tmpdir):
+def test_library_controller(tmpdir, credentials):
     """This test creates an session_environment and writes an Library.
     It then reads it. Its expected the loaded Library and Library
     retrieved from the AqSession will have equivalent attributes."""
-    session = AqSession('vrana', 'Mountain5', 'http://52.27.43.242:81/')
+    session = AqSession(**credentials['nursery'])
     lib = session.Library.all()[-1]
 
-    session_env = SessionEnvironment('mysession', session)
+    session_env = SessionEnvironment(**credentials['nursery'], encryption_key=Fernet.generate_key())
     session_env.set_dir(tmpdir)
 
     session_env.write_library(lib)
@@ -42,81 +42,61 @@ def test_library_controller(tmpdir):
     assert loaded_lib.source.dump() == loaded_lib.source.dump()
 
 
-def test_session_manager_register(tmpdir):
+def test_session_manager_register(sm, credentials):
     """This tests that register session will """
-    env = SessionManager(tmpdir)
+    assert not hasattr(sm, "nursery")
+    sm.register_session(**credentials['nursery'])
+    assert hasattr(sm, "nursery")
 
-    assert not hasattr(env, "nursery")
-    env.register_session("vrana", "Mountain5", 'http://52.27.43.242:81/', "nursery")
-    assert hasattr(env, "nursery")
-
-    session = env.get_session("nursery")
-    assert session.name == "nursery"
-    assert session.login == "vrana"
-    assert session.url == 'http://52.27.43.242:81/'
+    session = sm.get_session("nursery")
+    assert session.name == credentials['nursery']['name']
+    assert session.login == credentials['nursery']['login']
+    assert session.url == credentials['nursery']['aquarium_url']
 
 
-def test_session_manager_set_current(tmpdir):
-    env = SessionManager(tmpdir)
-    env.register_session("vrana", "Mountain5", 'http://52.27.43.242:81/', "nursery")
-    env.register_session("vrana", "Mountain5", 'http://52.27.43.242:81/', "production")
-    assert env.current is None
+def test_session_manager_set_current(sm, credentials):
+    sm.register_session(**credentials['nursery'])
+    sm.register_session(**credentials['production'])
+    assert sm.current_session is None
 
     # set to nursery
-    env.set_current("nursery")
-    assert env.current.name == "nursery"
+    sm.set_current("nursery")
+    assert sm.current_session.name == "nursery"
 
     # set to production
-    env.set_current("production")
-    assert env.current.name == "production"
+    sm.set_current("production")
+    assert sm.current_session.name == "production"
 
     # set to doesnt exit
-    env.set_current("doesn't exist")
-    assert env.current.name == "production"
+    sm.set_current("doesn't exist")
+    assert sm.current_session.name == "production"
 
 
-def test_session_manage_mkdirs(tmpdir):
+def test_session_manage_mkdirs(sm, credentials):
     """This tests to ensure the directories are created as expected"""
-    env = SessionManager(tmpdir)
-    env.register_session("vrana", "Mountain5", 'http://52.27.43.242:81/', "nursery")
-    env.register_session("vrana", "Mountain5", 'http://52.27.43.242:81/', "production")
+    sm.register_session(**credentials['nursery'])
+    sm.register_session(**credentials['production'])
 
-    env.set_dir(tmpdir)
-    g = env.abspaths
-    env.mkdirs()
+    g = sm.abspaths
+    sm.mkdirs()
 
-    assert os.path.isdir(os.path.join(tmpdir, env.name, "nursery", "protocols"))
-    assert os.path.isdir(os.path.join(tmpdir, env.name, "production", "protocols"))
+    assert os.path.isdir(os.path.join(sm.abspath, "nursery", "protocols"))
+    assert os.path.isdir(os.path.join(sm.abspath, "production", "protocols"))
     print()
-    print(env.show(print_files=True))
+    print(sm.show(print_files=True))
 
-    env.rmdirs()
-    assert not os.path.isdir(os.path.join(tmpdir, env.name))
-
-
-def test_session_manager_save_and_load_environments(tmpdir):
-
-    sm1 = SessionManager(tmpdir)
-    sm1.set_dir(tmpdir)
-    sm1.register_session("vrana", "Mountain5", 'http://52.27.43.242:81/', "nursery")
-    sm1.register_session("vrana", "Mountain5", 'http://52.27.43.242:81/', "production")
-    sm1.set_dir(tmpdir)
-
-    sm1.save_environments()
-    sm2 = SessionManager.load_environments(os.path.join(tmpdir, sm1.name))
-
-    assert hasattr(sm2, "nursery")
-    assert hasattr(sm2, "production")
-
+    sm.rmdirs()
+    assert not os.path.isdir(sm.abspath)
 
 # TODO: better test for loaded_sm
-def test_session_manager_save_and_load(tmpdir):
+def test_session_manager_save_and_load(sm, credentials):
 
-    sm = SessionManager(tmpdir, meta_name="test_env.json")
-    sm.register_session("vrana", "Mountain5", 'http://52.27.43.242:81/', "nursery")
-    sm.register_session("vrana", "Mountain5", 'http://52.27.43.242:81/', "production")
+    sm.register_session(**credentials['nursery'])
+    sm.register_session(**credentials['production'])
 
     sm.save()
 
-    loaded_sm = SessionManager.load(sm.metadata.env.abspath)
-    assert len(loaded_sm._children) == len(sm._children)
+    copied_sm = SessionManager(sm.abspath, meta_dir=sm.metadata.abspath, meta_name=sm.metadata.env.name)
+    copied_sm.load()
+    assert len(copied_sm._children) == len(sm._children)
+    assert copied_sm.sessions.keys() == sm.sessions.keys()
