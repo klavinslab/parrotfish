@@ -17,10 +17,10 @@ tests_require = [
 
 install_requires = [
     'pydent',
-    'hug',
     'dill',
     'magicdir',
-    'colorama', 'prompt_toolkit',
+    'colorama',
+    'prompt_toolkit',
 ]
 
 classifiers = [],

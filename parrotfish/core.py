@@ -3,7 +3,7 @@ from pathlib import Path
 import fire
 
 from parrotfish.session_environment import SessionManager
-from parrotfish.utils import CustomLogging, format_json
+from parrotfish.utils import CustomLogging, format_json, compare_content
 from requests.exceptions import InvalidSchema
 import tempfile
 import os
@@ -96,9 +96,15 @@ class CLI(object):
                 # then its an OperationType
                 local_ot = current_env.read_operation_type(category.name, protocol.name)
                 for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
-                    logger.cli("Updating {}/{} ({})".format(category.name, local_ot.name, accessor))
                     code = getattr(local_ot, accessor)
-                    code.update()
+                    server_code = local_ot.code(accessor)
+                    diff_str = compare_content(server_code.content, code.content).strip()
+                    if diff_str != '':
+                        logger.cli("++ Updating {}/{} ({})".format(category.name, local_ot.name, accessor))
+                        print(diff_str)
+                        code.update()
+                    else:
+                        logger.cli("-- No changes for {}/{} ({})".format(category.name, local_ot.name, accessor))
         self._save()
 
     def _get_operation_types_from_sever(self, category):

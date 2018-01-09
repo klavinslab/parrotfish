@@ -63,7 +63,6 @@ class Shell(object):
 
     @property
     def commands(self):
-        print(self.cli.__dict__)
         return get_callables(self.cli.__class__)
 
     def command_completer(self):
@@ -79,7 +78,6 @@ class Shell(object):
         completions = []
         if self.cli._session_manager.current_session:
             categories = list(self.cli._get_categories().keys())
-            print(categories)
             completions += add_completions(['fetch'], categories)
             completions += add_completions(['push_category'], categories)
         if self.cli._session_manager.sessions:
