@@ -15,4 +15,4 @@ pylint:
 
 coverage:
 	@echo "Coverage"
-	pipenv run py.test --cov-config .coveragerc --verbose --cov-report term --cov-report xml --cov=pydent tests
+	pipenv run py.test --cov-config .coveragerc --verbose --cov-report term --cov-report xml --cov=parrotfish tests
