@@ -21,6 +21,7 @@ install_requires = [
     'magicdir',
     'colorama',
     'prompt_toolkit',
+    'cryptography'
 ]
 
 classifiers = [],

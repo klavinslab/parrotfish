@@ -1,4 +1,8 @@
-# credit: https://chezsoi.org/lucas/blog/colored-diff-output-with-python.html
+"""
+Utility functions for comparing two large strings.
+
+credit: https://chezsoi.org/lucas/blog/colored-diff-output-with-python.html
+"""
 import difflib
 
 try:

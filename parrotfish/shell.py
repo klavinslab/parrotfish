@@ -1,12 +1,17 @@
+"""
+Interactive shell
+"""
+
+import itertools
+import os
+import re
+
+import fire
+from parrotfish.utils import CustomLogging, get_callables
 from prompt_toolkit import prompt
 from prompt_toolkit.contrib.completers import WordCompleter, PathCompleter
 from prompt_toolkit.styles import style_from_dict
 from prompt_toolkit.token import Token
-import itertools
-import re
-from parrotfish.utils import CustomLogging, get_callables
-import os
-import fire
 
 logger = CustomLogging.get_logger(__name__)
 
@@ -111,17 +116,19 @@ class Shell(object):
         else:
             print("Cmd {} not found. Use '-h' or '--help' for help. Click tab for available commands.".format(fxn_name))
 
-    def set_repo_interactive(self):
+    # TODO: Probably a better way to do this...
+    @staticmethod
+    def set_repo_interactive():
+        return Shell.get_path()
+
+    @staticmethod
+    def move_repo_interactive():
+        return Shell.get_path()
+
+    @staticmethod
+    def get_path():
         path = prompt('> enter path: ', completer=PathCompleter(only_directories=True, expanduser=True))
         return (os.path.expanduser(path),), {}
-
-    def move_repo_interactive(self):
-        path = prompt('> enter path: ', completer=PathCompleter(only_directories=True, expanduser=True))
-        return (os.path.expanduser(path),), {}
-
-    # def move_repo_interactive(self):
-    #     path = prompt('> enter path: ', completer=PathCompleter(only_directories=True, expanduser=True))
-    #     return (os.path.expanduser(path),), {}
 
     def run(self):
         print("Entering interactive")

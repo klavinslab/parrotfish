@@ -1,4 +1,6 @@
-# ParrotFish
+"""
+Versioning information for ParrotFish
+"""
 
 __title__ = 'ParrotFish'
 __description__ = 'IDE Extension for Aquarium'

@@ -1,50 +1,77 @@
+"""
+Classes for managing Aquarium sessions and protocols
+"""
+
 import datetime
 import os
 from glob import glob
 
 import dill
-from magicdir import MagicDir
+from opath import ODir
 from parrotfish.__version__ import __version__
 from parrotfish.utils import sanitize_filename, sanitize_attribute
 from parrotfish.utils.log import CustomLogging
 from pydent import AqSession
 from pydent.models import OperationType, Library
-import base64
+
 logger = CustomLogging.get_logger(__name__)
 from copy import deepcopy
 
 from cryptography.fernet import Fernet, InvalidToken
 
-# TODO: different name for ENV_DATA
-# where saved data is stored
-HERE = os.path.dirname(os.path.abspath(__file__))
 
-
-class SessionEnvironment(MagicDir):
+class SessionEnvironment(ODir):
     """
+    Manages protocols (:class:`OperationType` & :class:`Library`) for a single Aquarium
+    session.
 
-    Example::
+    Features:
+        * **fetch** protocols from an Aquarium server and write them to
+    the local machine.
+        * **push** protocols from the local machine to the Aquarium server
+
+    Directory structure details: Each managed session will contain a directory for each
+    :class:`OperationType` or :class:`Library` folder it is managing. The directory structure
+    for a managed session looks like the following::
 
         SessionEnvironment1
-           └──Category1
-               |──OperationType1
-               |   |──OperationType1.json
-               |   |──OperationType1.rb
-               |   |──OperationType1__cost_model.rb
-               |   |──OperationType1__documentation.rb
-               |   └──OperationType1__precondition.rb
-               └──LibraryType1
-                   |──LibraryType1.rb
-                   └──LibraryType1.json
+           |──.session_env.pkl              (pickled information about the AqSession it is managing)
+           └──Category1                     (protocol category folder)
+               |──OperationType1            (OperationType folder)
+               |   |──OperationType1.json   (data related to OperationType)
+               |   |──OperationType1.rb                 (protocol code)
+               |   |──OperationType1__cost_model.rb     (code model code)
+               |   |──OperationType1__documentation.md  (documentation markdown)
+               |   └──OperationType1__precondition.rb   (precondition code)
+               └──LibraryType1              (Library folder)
+                   |──LibraryType1.rb                   (library code)
+                   └──LibraryType1.json                 (data related to the Library)
 
+    Encryption details: Each managed session folder (:class:`SessionEnvironment`)
+    also stores information about
+    the Aquarium session it uses, which includes login and the url.
+    This ties the actual server (i.e. the url) to the managed session folder. For security,
+    ParrotFish does *not* directly store the :class:`AqSession.` Instead, passwords are encrypted
+    using Fernet (https://cryptography.io/en/latest/fernet/). Passwords are stored as an encrypted
+    string. This string can be decrypted using the proper key.
     """
-    ENV_PKL = '.env_pkl'
+
+    ENV_PKL = '.session_environment.pkl'  # name of the pickled file when saving or loading
 
     def __init__(self, name, login, password, aquarium_url, encryption_key):
         """
+        Constructs a new :class:`SessionEnvironment`.
 
-        :param path: The path of this session
-        :type path: str
+        :param name: name of the session
+        :type name: str
+        :param login: aquarium login
+        :type login: str
+        :param password: aquarium password (not stored)
+        :type password: str
+        :param aquarium_url: aquarium url
+        :type aquarium_url: str
+        :param encryption_key: Fernet encryption key to use to store the encrypted password
+        :type encryption_key: str
         """
         super().__init__(name, push_up=False, check_attr=False)
 
@@ -64,6 +91,14 @@ class SessionEnvironment(MagicDir):
         self.add('protocols')
 
     def create_session(self, encryption_key):
+        """Creates a new :class:`AqSession` instance using the login, aquarium_url, and encrypted
+        password information stored. The encryption_key is used to decrypt a the password.
+
+        :param encryption_key: Fernet key to decrypt the password
+        :type encryption_key: str
+        :return: AqSession instance
+        :rtype: AqSession
+        """
         cipher_suite = Fernet(encryption_key)
         aqsession = None
         try:
@@ -81,6 +116,7 @@ class SessionEnvironment(MagicDir):
 
     @classmethod
     def load_from_pkl(cls, env_pkl, encryption_key):
+        """Loads from the pickle"""
         env = None
         if os.path.isfile(env_pkl):
             with open(env_pkl, 'rb') as f:
@@ -98,6 +134,16 @@ class SessionEnvironment(MagicDir):
             dill.dump(copied, f)
 
     def update_encryption_key(self, old_key, new_key):
+        """
+        Updates the encryption key for this SessionEnvironment
+
+        :param old_key: old Fernet key
+        :type old_key: str
+        :param new_key: new Fernet key
+        :type new_key: str
+        :return: None
+        :rtype: None
+        """
         old_cipher = Fernet(old_key)
         new_cipher = Fernet(new_key)
         self.encrypted_password = new_cipher.encrypt(old_cipher.decrypt(self.encrypted_password))
@@ -124,26 +170,47 @@ class SessionEnvironment(MagicDir):
     #             return dill.load(f)
 
     def add_category_dir(self, category):
+        """Creates a new category directory"""
         cat_dirname = sanitize_filename(category)
         cat_dir = self.protocols.add(sanitize_attribute(cat_dirname))
         return cat_dir
 
     def add_protocol_dir(self, category_name, protocol_name):
+        """Creates a new protocol directory"""
         cat = self.add_category_dir(category_name)
         protocol_name = sanitize_filename(protocol_name)
         return cat.add(protocol_name)
 
     @staticmethod
     def _sanitize_name(name):
+        """Sanitizes a name to make it *file friendly*"""
         return sanitize_filename(name)
 
     def get_category_dir(self, cat_name):
+        """
+        Returns the :class:`ODir` that manages a category
+
+        :param cat_name: category name
+        :type cat_name: str
+        :return: category directory
+        :rtype: ODir
+        """
         cat_name = self._sanitize_name(cat_name)
         if not self.protocols.has(cat_name):
             raise FileNotFoundError("Category \"{}\" not found".format(cat_name))
         return self.protocols.get(cat_name)
 
     def get_protocol_dir(self, cat_name, protocol_name):
+        """
+        Returns the :class:`ODir` that manages the protocol
+
+        :param cat_name: category of the protocol
+        :type cat_name: str
+        :param protocol_name: name of the protocol
+        :type protocol_name: str
+        :return: directory that manages the protocol
+        :rtype: ODir
+        """
         cat = self.get_category_dir(cat_name)
         protocol_name = self._sanitize_name(protocol_name)
         if not cat.has(protocol_name):
@@ -152,7 +219,7 @@ class SessionEnvironment(MagicDir):
 
     @property
     def categories(self):
-        """Return a list of categories (MagicDir)"""
+        """Return a list of categories (ODir)"""
         return self.protocols.list_dirs()
 
     #
@@ -169,6 +236,16 @@ class SessionEnvironment(MagicDir):
     # Methods for writing and reading OperationType and Library
     # TODO: library and operation type methods are pretty similar, we could generalize but there's only two different models...
     def get_operation_type_dir(self, category, operation_type_name):
+        """
+        Returns the :class:`ODir` that manages an operation_type
+
+        :param category: category of the OperationType
+        :type category: str
+        :param operation_type_name: name of the operation_type
+        :type operation_type_name: str
+        :return: the library directory
+        :rtype: ODir
+        """
         ot_dir = self.add_protocol_dir(category, operation_type_name)
         basename = ot_dir.name
 
@@ -182,6 +259,16 @@ class SessionEnvironment(MagicDir):
         return ot_dir
 
     def get_library_type_dir(self, category, library_name):
+        """
+        Returns the :class:`ODir` library that manages a library
+
+        :param category: category of the Library
+        :type category: str
+        :param library_name: name of the library
+        :type library_name: str
+        :return: the library directory
+        :rtype: ODir
+        """
         lib_dir = self.add_protocol_dir(category, library_name)
         basename = lib_dir.name
 
@@ -192,6 +279,14 @@ class SessionEnvironment(MagicDir):
         return lib_dir
 
     def write_operation_type(self, operation_type):
+        """
+        Writes a :class:`OperationType` to the local machine
+
+        :param operation_type: OperationType to write to local files
+        :type operation_type: OperationType
+        :return: None
+        :rtype: None
+        """
         ot_dir = self.get_operation_type_dir(operation_type.category, operation_type.name)
 
         include = {
@@ -219,6 +314,14 @@ class SessionEnvironment(MagicDir):
             ot_dir.get(accessor).write(metadata[accessor]['content'])
 
     def write_library(self, library):
+        """
+        Writes a :class:`Library` to the local machine
+
+        :param library: library to write to local files
+        :type library: Library
+        :return: None
+        :rtype: None
+        """
         lib_dir = self.get_library_type_dir(library.category, library.name)
 
         # write json
@@ -228,6 +331,17 @@ class SessionEnvironment(MagicDir):
         lib_dir.source.write(library.code('source').content)
 
     def read_operation_type(self, category, name):
+        """
+        Constructs a :class:`OperationType` instance constructed out of local
+        files
+
+        :param category: category of the protocol
+        :type category: str
+        :param name: name of the protocol
+        :type name: str
+        :return: OperationType read from local files
+        :rtype: OperationType
+        """
         ot_dir = self.get_operation_type_dir(category, name)
         metadata = ot_dir.meta.load_json()  # load the meta data from the .json file
         ot = OperationType.load(metadata)
@@ -240,6 +354,17 @@ class SessionEnvironment(MagicDir):
         return ot
 
     def read_library_type(self, category, name):
+        """
+        Constructs a :class:`Library` instance constructed out of local
+        files
+
+        :param category: category of the protocol
+        :type category: str
+        :param name: name of the protocol
+        :type name: str
+        :return: library read from local files
+        :rtype: Library
+        """
         lib_dir = self.get_library_type_dir(category, name)
         metadata = lib_dir.meta.load_json()
         lib = Library.load(metadata)
@@ -249,17 +374,21 @@ class SessionEnvironment(MagicDir):
         return lib
 
 
-class SessionManager(MagicDir):
+class SessionManager(ODir):
     """
-    SessionManager reads and writes :class:`OperationType` and :class:`Library`.
-    The path of the directory (*SessionManagerName*) is saved in
-    *meta_dir/environment_data/meta_name.json* in *root*.
+    Manages multiple :class:`SessionEnvironment` instances. SessionEnvironments live
+    in a single directory managed by this class. Information about where the SessionManager
+    directory resides is stored in the 'environment_data/environment_settings.json` file.
+    By default, this is located where ParrotFish is installed so that is can be used globally
+    on the machine. Alternatively, a SessionManager can be constructed that uses a new
+    environement_settings file. The **environment_settings.json** also stores an
+    important encryption key so that :class:`SessionEnvironment`s can be decrypted and used properly.
 
     Example session structure::
 
         meta_dir
         └──environment_data
-            └──meta_name.json       (contains information about root directory)
+            └──environment_settings.json       (contains information about root directory)
 
         SessionManagerName          (Master or root directory)
         |──SessionEnvironment1      (Aquarium session)
@@ -280,8 +409,10 @@ class SessionManager(MagicDir):
             └── ...
     """
 
-    DEFAULT_METADATA_LOC = os.path.join(HERE, 'environment_data')
-    DEFAULT_METADATA_NAME = 'env.json'
+
+    DEFAULT_METADATA_LOC = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), 'environment_data')
+    DEFAULT_METADATA_NAME = 'environment_settings.json'
 
     def __init__(self, dir, name="FishTank", meta_dir=None, meta_name=None):
         """
@@ -305,8 +436,8 @@ class SessionManager(MagicDir):
             meta_dir = self.DEFAULT_METADATA_LOC
         if meta_name is None:
             meta_name = self.DEFAULT_METADATA_NAME
-        self.metadata = MagicDir(meta_dir)
-        self.metadata.add_file(meta_name, 'env')
+        self.metadata = ODir(meta_dir)
+        self.metadata.add_file(meta_name, 'env_settings')
 
         self._curr_session_name = None
 
@@ -321,6 +452,14 @@ class SessionManager(MagicDir):
         self._add_session_env(session_env)
 
     def remove_session(self, name):
+        """
+        Removes and deletes a managed session
+
+        :param name: name of the session to delete
+        :type name: str
+        :return: None
+        :rtype: None
+        """
         session = self.get(name)
         session.remove_parent()
         session.rmdirs()
@@ -331,9 +470,9 @@ class SessionManager(MagicDir):
 
     @property
     def __meta(self):
-        if not self.metadata.env.exists():
+        if not self.metadata.env_settings.exists():
             self.save()
-        return self.metadata.env.load_json()
+        return self.metadata.env_settings.load_json()
 
     @property
     def current_env(self):
@@ -375,7 +514,7 @@ class SessionManager(MagicDir):
 
     def delete_session(self, name):
         """Deletes a session, removing the folders and files as well as the abstract
-        MagicDir link"""
+        ODir link"""
         session_env = self.get(name)
         session_env.rmdirs()
         session_env.remove_parent()
@@ -391,15 +530,15 @@ class SessionManager(MagicDir):
     def save(self, force_new_key=False, key=None):
         """Save the metadata"""
         encryption_key = None
-        if not self.metadata.env.exists() or force_new_key:
+        if not self.metadata.env_settings.exists() or force_new_key:
             if key is None:
                 logger.warning("No encryption key found. Generating new key...")
                 encryption_key = self.__new_encryption_key().decode()
             else:
                 encryption_key = key
         else:
-            encryption_key = self.metadata.env.load_json()['encryption_key']
-        self.metadata.env.dump_json(
+            encryption_key = self.metadata.env_settings.load_json()['encryption_key']
+        self.metadata.env_settings.dump_json(
             {
                 "root": str(self.abspath),
                 'current': self._curr_session_name,
@@ -410,13 +549,16 @@ class SessionManager(MagicDir):
             indent=4)
         self.save_environments()
 
-    def load(self):
+    def load(self, meta=None):
         """Load from the metadata"""
-        meta = self.__meta
+        if meta is None:
+            meta = self.__meta
         if __version__ != meta['version']:
             logger.warning("Version mismatched! Environment data stored using "
                            "ParrotFish version '{}' but currently using '{}'"
                            .format(meta['version'], __version__))
+
+        # load encryption key from meta
         encryption_key = meta['encryption_key']
         env = self.load_environments(encryption_key)
         env.set_current(meta['current'])
@@ -429,6 +571,7 @@ class SessionManager(MagicDir):
             session_env.save_to_pkl()
 
     def update_encryption_key(self, new_key):
+        """Updates the encryption key used to decrypt :class:`SessionEnvironment`s"""
         old_key = self.__meta['encryption_key']
         for session_env in self.session_env_list:
             if session_env:
@@ -443,7 +586,7 @@ class SessionManager(MagicDir):
         the name "Fishtank." Environments would be loaded from `User/Documents/FishTank/*/.env_pkl`
         """
         meta = self.__meta
-        self.name = os.path.basename(self.metadata.env.name)
+        self.name = os.path.basename(self.metadata.env_settings.name)
 
         # set root path
         root_dir = os.path.dirname(meta['root'])
@@ -466,10 +609,10 @@ class SessionManager(MagicDir):
                "  environment_location=\"{metadata}\"\n" \
                "  session_directory=\"{dir}\")".format(
             name=self.name,
-            metadata=str(self.metadata.env.abspath),
+            metadata=str(self.metadata.env_settings.abspath),
             current=self.current_session,
             dir=str(self.abspath)
         )
 
     def __repr__(self):
-        return "SessionManager(name={name}, env={env}".format(name=self.name, env=str(self.metadata.env.abspath))
+        return "SessionManager(name={name}, env={env}".format(name=self.name, env=str(self.metadata.env_settings.abspath))

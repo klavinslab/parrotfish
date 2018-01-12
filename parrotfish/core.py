@@ -1,19 +1,23 @@
+"""
+Core functions for interacting with ParrotFish
+"""
+
+import os
+import tempfile
 from pathlib import Path
 
 import fire
-
+from cryptography.fernet import Fernet
 from parrotfish.session_environment import SessionManager
 from parrotfish.utils import CustomLogging, format_json, compare_content
 from requests.exceptions import InvalidSchema
-import tempfile
-import os
-from cryptography.fernet import Fernet
 
 logger = CustomLogging.get_logger(__name__)
+logger.setLevel("VERBOSE")
 from parrotfish.shell import Shell
 
-class CLI(object):
 
+class CLI(object):
     def __init__(self, sm):
         """
         CLI instantiator
@@ -64,7 +68,7 @@ class CLI(object):
         """Loads the environment"""
         try:
             self._session_manager.load()
-            logger.cli("Environment file loaded from \"{}\"".format(self._session_manager.metadata.env.abspath))
+            logger.cli("Environment file loaded from \"{}\"".format(self._session_manager.metadata.env_settings.abspath))
             logger.cli("environment loaded")
             self._save()
             self.print_env()
@@ -139,7 +143,8 @@ class CLI(object):
         """List the current available sessions"""
         sessions = self._sessions
         if len(sessions) == 0:
-            logger.cli("There are no sessions. Use 'pfish register' to register a session. Use 'pfish register --h' for help.")
+            logger.cli(
+                "There are no sessions. Use 'pfish register' to register a session. Use 'pfish register --h' for help.")
         else:
             logger.cli(format_json(self._sessions_json()))
         return sessions
@@ -171,17 +176,11 @@ class CLI(object):
         self._session_manager.set_current(session_name)
         self._save()
 
-    # def set(session_name, category):
-    #     """Sets the session and category"""
-    #     set_session(session_name)
-    #     set_category(category)
-
-
     def set_repo(self, path):
-        dir = os.path.dirname(path)
-        name = os.path.basename(path)
+        repo_dir = os.path.dirname(path)
+        repo_name = os.path.basename(path)
         logger.cli("Setting repo to \"{}\"".format(path))
-        self._session_manager = SessionManager(dir, name=name)
+        self._session_manager = SessionManager(repo_dir, name=repo_name)
 
         logger.cli("Loading environment...")
         self._save()
@@ -205,9 +204,9 @@ class CLI(object):
 
     def generate_encryption_key(self):
         key = Fernet.generate_key().decode()
-        logger.cli("SAVE THIS KEY IN A SECURE PLACE IF YOU WANT TO USE YOUR REPO ON ANOTHER COMPUTER. "
+        logger.warning("SAVE THIS KEY IN A SECURE PLACE IF YOU WANT TO USE YOUR REPO ON ANOTHER COMPUTER. "
                    "IT WILL NOT APPEAR AGAIN.")
-        logger.cli("NEW KEY: {}".format(key))
+        logger.warning("NEW KEY: {}".format(key))
         self.__update_encryption_key(key)
 
     def __update_encryption_key(self, new_key):
@@ -216,19 +215,36 @@ class CLI(object):
         self.set_encryption_key(new_key)
 
     def set_encryption_key(self, key):
+        """
+        Sets the encryption key to use for the managed folder.
+
+        :param key:
+        :type key:
+        :return:
+        :rtype:
+        """
         logger.cli("Encryption key set")
         self._session_manager.save(force_new_key=True, key=key)
         self._session_manager = SessionManager('').load()
         self._save()
         logger.cli("Loaded sessions with new key")
-        self.sessions
+        return self.sessions
 
-    def register(self,
-                 login,
-                 password,
-                 aquarium_url,
-                 name):
-        """Registers a new session."""
+    def register(self, login, password, aquarium_url, name):
+        """
+        Registers a new session, creating a new managed folder.
+
+        :param login: aquarium login
+        :type login: str
+        :param password: aquarium password
+        :type password: str
+        :param aquarium_url: aquarium url
+        :type aquarium_url: str
+        :param name: name to give to the new session
+        :type name: str
+        :return: None
+        :rtype: NOne
+        """
         try:
             self._session_manager.register_session(login, password,
                                                    aquarium_url, name)
@@ -240,6 +256,14 @@ class CLI(object):
         self._save()
 
     def unregister(self, name):
+        """
+        Unregisters a session by name
+
+        :param name: name of session to unregister
+        :type name: str
+        :return: None
+        :rtype: NOne
+        """
         if name in self._session_manager.sessions:
             logger.cli("Unregistering {}: {}".format(
                 name, str(self._session_manager.get_session(name))))
@@ -254,22 +278,68 @@ class CLI(object):
         logger.cli('\n' + self._session_manager.show())
 
     def repo(self):
+        """Prints the location of the managed folder"""
         logger.cli(str(self._session_manager.abspath))
 
     def shell(self):
+        """Opens an interactive shell"""
         logger.cli("Opening new shell")
         Shell(self).run()
-
 
     def __str__(self):
         return str(self._session_manager)
 
 
-def run():
-    logger.setLevel("VERBOSE")
+def open_from_global():
+    """
+    Opens a CLI instance from globally stored environment file that points
+    to a particular directory on the local machine.
+
+    :return: CLI instance
+    :rtype: CLI
+    """
     sm = SessionManager(tempfile.mkdtemp())
     sm.load()
     cli = CLI(sm)
+    return cli
+
+
+def open_from_local(directory, encryption_key=None):
+    """
+    Opens a CLI instance from within a parrotfish directory. For example,
+    if the following exists::
+
+        FishTank          (Master or root directory)
+        |──nursery      (Aquarium session)
+        |   └──Category1            (Protocol Category)
+        |       |──.env_pkl         (contains information about SessionEnvironment1's AqSession)
+        |       |──protocols        (protocols folder)
+
+    this method will attempt to open "FishTank" using the 'env.json' located within
+    FishTank. If it does not exist and an encryption key is provided, a new 'env.json'
+    will be created.
+
+    :param directory: directory path pointing to the parrotfish folder
+    :type directory: str
+    :param encryption_key: optional encryption_key to use
+    :type encryption_key: str
+    :return: CLI instance
+    :rtype: CLI
+    """
+    sm_dir = os.path.dirname(directory)
+    sm_name = os.path.basename(directory)
+    sm = SessionManager(sm_dir, sm_name, meta_dir=directory)
+    if encryption_key:
+        sm.update_encryption_key(encryption_key)
+    sm.load()
+    cli = CLI(sm)
+    cli._save()
+    return cli
+
+
+def run():
+    logger.setLevel("VERBOSE")
+    cli = open_from_global()
     fire.Fire(cli)
 
 

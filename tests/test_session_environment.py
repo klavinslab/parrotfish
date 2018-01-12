@@ -1,7 +1,10 @@
+"""Tests session managment"""
+
 from parrotfish.session_environment import SessionEnvironment, SessionManager
 from pydent import AqSession
 import os
 from cryptography.fernet import Fernet
+
 
 def test_operation_type_controller(tmpdir, credentials):
     """This test creates an session_environment and writes an OperationType.
@@ -96,7 +99,7 @@ def test_session_manager_save_and_load(sm, credentials):
 
     sm.save()
 
-    copied_sm = SessionManager(sm.abspath, meta_dir=sm.metadata.abspath, meta_name=sm.metadata.env.name)
+    copied_sm = SessionManager(sm.abspath, meta_dir=sm.metadata.abspath, meta_name=sm.metadata.env_settings.name)
     copied_sm.load()
     assert len(copied_sm._children) == len(sm._children)
     assert copied_sm.sessions.keys() == sm.sessions.keys()

@@ -1,3 +1,7 @@
+"""
+Custom logging functions
+"""
+
 import logging
 
 try:

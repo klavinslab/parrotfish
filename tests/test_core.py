@@ -1,3 +1,5 @@
+"""Tests core command line interface"""
+
 from parrotfish.core import CLI
 from parrotfish import utils
 from parrotfish.session_environment import SessionManager
@@ -47,7 +49,7 @@ def test_load(cli, credentials):
 
     # load another cli using same files
     old_sm = cli._session_manager
-    copied_sm = SessionManager(old_sm.abspath, meta_dir=old_sm.metadata.abspath, meta_name=old_sm.metadata.env.name)
+    copied_sm = SessionManager(old_sm.abspath, meta_dir=old_sm.metadata.abspath, meta_name=old_sm.metadata.env_settings.name)
     copied_sm.load()
     cli2 = CLI(copied_sm)
 
