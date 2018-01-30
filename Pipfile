@@ -9,7 +9,6 @@ name = "pypi"
 
 prompt-toolkit = "*"
 colorama = "*"
-magicdir = "*"
 dill = "*"
 cryptography = "*"
 opath = "*"

@@ -2,11 +2,6 @@ import os
 import re
 from distutils.core import setup
 
-# about
-__author__ = 'Garrett Newman, Justin Vrana'
-__license__ = ''
-__package__ = "parrotfish"
-__readme__ = "README"
 
 tests_require = [
     'pytest',
@@ -17,16 +12,16 @@ tests_require = [
 
 install_requires = [
     'pydent',
-    'hug',
     'dill',
-    'magicdir',
-    'colorama', 'prompt_toolkit',
+    'opath',
+    'colorama',
+    'prompt_toolkit',
+    'cryptography'
 ]
 
 classifiers = [],
 
 # setup functions
-
 
 def sanitize_string(str):
     str = str.replace('\"', '')
@@ -53,19 +48,28 @@ def read(fname):
 
 ver = parse_version_file()
 
+
 # setup
 setup(
-        name=ver['title'],
-        version=ver['version'],
-        packages=[ver['package']],
-        url='https://github.com/klavinslab/parrotfish',
-        license=ver['license'],
-        author=ver['author'],
-        author_email='justin.vrana@gmail.com',
-        keywords='directory python tree path',
-        description='intuitive python directory tree management for all',
-        long_description="",
-        install_requires=install_requires,
-        python_requires='>=3.3',
-        tests_require=tests_require,
+    name=ver["title"],
+    version=ver["version"],
+    packages=["parrotfish", "parrotfish.utils"],
+    package_data={
+        'parrotfish': ['.environ']
+    },
+    url='https://github.com/klavinslab/parrotfish',
+    license=ver["license"],
+    author=ver["author"],
+    author_email='',
+    keywords='',
+    description='',
+    long_description="",
+    install_requires=install_requires,
+    python_requires='>=3.4',
+    tests_require=tests_require,
+    entry_points={
+        'console_scripts': [
+                'pfish = parrotfish.core:run'
+        ],
+    }
 )
