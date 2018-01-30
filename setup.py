@@ -16,6 +16,7 @@ install_requires = [
     'opath',
     'colorama',
     'prompt_toolkit',
+    'fire',
     'cryptography'
 ]
 
