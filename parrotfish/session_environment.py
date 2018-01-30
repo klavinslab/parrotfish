@@ -11,15 +11,19 @@ logger = CustomLogging.get_logger(__name__)
 
 
 class SessionEnvironment(MagicDir):
+    """This class handles a session folder. It can save and write
+    OperationTypes and Libraries from Aquarium."""
 
     def __init__(self, path, session_login, session_url):
         """
+        SessionEnvironment initializer
 
-        :param path: The path of this session
-        :type path: str
+        :param path: the location of this session
+        :param session_login: login
+        :param session_url: url
         """
         path = os.path.abspath(path)
-        super().__init__(os.path.basename(path), push_up=False, check_attr=False)
+        super().__init__(os.path.basename(path), push_up=False, make_attr=False)
 
         self.session_login = session_login
         self.session_url = session_url
@@ -34,10 +38,13 @@ class SessionEnvironment(MagicDir):
         self.add('protocols')
 
     def save(self):
+        """Pickles this instance of the session environment to
+        the path located in `self.env_pkl`"""
         with self.env_pkl.open('wb') as f:
             dill.dump(self, f)
 
     def load(self):
+        """Loads data from the pickle stored in `self.env_pkl`"""
         if self.env_pkl.is_file():
             with self.env_pkl.open('rb') as f:
                 loaded = dill.dump(self, f)
@@ -49,6 +56,8 @@ class SessionEnvironment(MagicDir):
         """
         Use self.name, self.url, and self.login to grab the session from the installation folder since
         we don't want to store that information in this folder...
+
+        Ideally, the session will be stored seperately somewhere.
         :return:
         :rtype:
         """
@@ -57,6 +66,8 @@ class SessionEnvironment(MagicDir):
     # Methods for writing and reading OperationType and Library
     # TODO: library and operation type methods are pretty similar, we could generalize but there's only two different models...
     def operation_type_dir(self, category, operation_type_name):
+        """Initializes the files and directories for an operation type"""
+
         # add the category directory to the protocols directory
         cat_dirname = sanitize_filename(category)
         cat_dir = self.protocols.add(sanitize_attribute(category))
@@ -75,6 +86,7 @@ class SessionEnvironment(MagicDir):
         return ot_dir
 
     def library_type_dir(self, category, library_name):
+        """Initializes the files and directories for a library"""
         # add the category directory to the protocols directory
         cat_dirname = sanitize_filename(category)
         cat_dir = self.protocols.add(cat_dirname)
@@ -90,10 +102,17 @@ class SessionEnvironment(MagicDir):
         return lib_dir
 
     def write_operation_type(self, operation_type):
+        """Writes data from an OperationType to files
+
+        ::
+
+            file-structure place holders
+
+        """
         ot_dir = self.operation_type_dir(operation_type.category, operation_type.name)
 
         include = {
-            'field_types': 'allowable_field_types'
+            'field_types': 'allowble_field_types'
         }
 
         # write metadata
@@ -110,12 +129,18 @@ class SessionEnvironment(MagicDir):
         )
 
         # write codes
-        ot_dir.protocol.write(operation_type.code('protocol').content)
-        ot_dir.precondition.write(operation_type.code('precondition').content)
-        ot_dir.documentation.write(operation_type.code('documentation').content)
-        ot_dir.cost_model.write(operation_type.code('cost_model').content)
+        ot_dir.protocol.write('w', operation_type.code('protocol').content)
+        ot_dir.precondition.write('w', operation_type.code('precondition').content)
+        ot_dir.documentation.write('w', operation_type.code('documentation').content)
+        ot_dir.cost_model.write('w', operation_type.code('cost_model').content)
 
     def write_library(self, library):
+        """Writes data from an Library to files
+
+        ::
+
+            file-structure place holders
+        """
         lib_dir = self.library_type_dir(library.category, library.name)
 
         # write json
@@ -125,6 +150,7 @@ class SessionEnvironment(MagicDir):
         lib_dir.source.write(library.code('source').content)
 
     def read_operation_type(self, category, name):
+        """Loads an OperationType from files"""
         ot_dir = self.operation_type_dir(category, name)
         metadata = ot_dir.meta.load()
         ot = OperationType.load(metadata)
@@ -136,6 +162,7 @@ class SessionEnvironment(MagicDir):
         return ot
 
     def read_library_type(self, category, name):
+        """Loads a Library from files"""
         lib_dir = self.library_type_dir(category, name)
         metadata = lib_dir.meta.load()
         lib = Library.load(metadata)

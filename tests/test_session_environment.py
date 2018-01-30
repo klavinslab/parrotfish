@@ -1,11 +1,12 @@
 from parrotfish.session_environment import SessionEnvironment
 from pydent import AqSession
 
+
 def test_operation_type_controller():
     session = AqSession('vrana', 'Mountain5', 'http://52.27.43.242:81/')
     ot = session.OperationType.all()[-1]
 
-    session_env = SessionEnvironment('mysession')
+    session_env = SessionEnvironment('mysession', 'vrana', 'http://52.27.43.242:81/')
 
     session_env.write_operation_type(ot)
 

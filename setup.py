@@ -28,49 +28,44 @@ classifiers = [],
 # setup functions
 
 
+def sanitize_string(str):
+    str = str.replace('\"', '')
+    str = str.replace("\'", '')
+    return str
+
+
+def parse_version_file():
+    """Parse the __version__.py file"""
+    here = os.path.abspath(os.path.dirname(__file__))
+    ver_dict = {}
+    with open(os.path.join(here, 'parrotfish', '__version__.py'), 'r') as f:
+        for line in f.readlines():
+            m = re.match('__(\w+)__\s*=\s*(.+)', line)
+            if m:
+                ver_dict[m.group(1)] = sanitize_string(m.group(2))
+    return ver_dict
+
+
 def read(fname):
+    """Read a file"""
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 
-def get_property(prop, project):
-    result = re.search(
-        r'{}\s*=\s*[\'"]([^\'"]*)[\'"]'.format(prop), open(project + '/__init__.py').read())
-    if result:
-        return result.group(1)
-    else:
-        raise RuntimeError(
-            "Unable to find property {0} in project \"{1}\".".format(prop, project))
-
-
-def get_version():
-    try:
-        return get_property("__version__", __package__)
-    except RuntimeError as e:
-        raise RuntimeError(
-            "Unable to find __version__ string in project \"{0}\"".format(__package__))
-
+ver = parse_version_file()
 
 # setup
 setup(
-    name=__package__,
-    version=get_version(),
-    packages=[__package__, "parrotfish.utils"],
-    package_data={
-        'parrotfish': ['.environ']
-    },
-    url='https://github.com/klavinslab/parrotfish',
-    license=__license__,
-    author=__author__,
-    author_email='',
-    keywords='',
-    description='',
-    long_description=read(__readme__),
-    install_requires=install_requires,
-    python_requires='>=3.4',
-    tests_require=tests_require,
-    entry_points={
-        'console_scripts': [
-                'pfish = parrotfish.parrotfish:run_pfish'
-        ],
-    }
+        name=ver['title'],
+        version=ver['version'],
+        packages=[ver['package']],
+        url='https://github.com/klavinslab/parrotfish',
+        license=ver['license'],
+        author=ver['author'],
+        author_email='justin.vrana@gmail.com',
+        keywords='directory python tree path',
+        description='intuitive python directory tree management for all',
+        long_description=read("README"),
+        install_requires=install_requires,
+        python_requires='>=3.3',
+        tests_require=tests_require,
 )
