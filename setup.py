@@ -64,7 +64,7 @@ setup(
         author_email='justin.vrana@gmail.com',
         keywords='directory python tree path',
         description='intuitive python directory tree management for all',
-        long_description=read("README"),
+        long_description="",
         install_requires=install_requires,
         python_requires='>=3.3',
         tests_require=tests_require,
