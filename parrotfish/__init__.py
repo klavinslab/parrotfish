@@ -1,5 +1,2 @@
-__version__ = "0.4.0a"
-
 from parrotfish.utils.log import CustomLogging
-from .environment import Environment
-from .parrotfish import ParrotFish, run_pfish
+from parrotfish.core import CLI, open_from_local, open_from_global
