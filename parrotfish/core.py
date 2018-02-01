@@ -9,7 +9,7 @@ from pathlib import Path
 import fire
 from cryptography.fernet import Fernet
 from parrotfish.session_environment import SessionManager
-from parrotfish.utils import CustomLogging, format_json, compare_content
+from parrotfish.utils import CustomLogging, docker_testing, format_json, compare_content
 from requests.exceptions import InvalidSchema
 
 logger = CustomLogging.get_logger(__name__)
@@ -133,6 +133,11 @@ class CLI(object):
             curr_env = self._session_manager.current_env
             curr_env.write_library(lib)
         self._save()
+
+    def test(self, protocol_name):
+        """ Test a single protocol on an Aquarium Docker container """
+        logger.cli("Testing protocol: {}".format(protocol_name))
+        docker_testing.test()
 
     @property
     def _sessions(self):
