@@ -140,10 +140,15 @@ class CLI(object):
             curr_env.write_library(lib)
         self._save()
 
-    def test(self, protocol_name):
+    def test(self, category_name, protocol_name):
         """ Test a single protocol on an Aquarium Docker container """
+        logger.cli("Pushing protocol: {}".format(protocol_name))
+        self.push_one(category_name, protocol_name)
+
+        current_env = self._session_manager.current_env
+        protocol = current_env.get_protocol_dir(category_name, protocol_name)
         logger.cli("Testing protocol: {}".format(protocol_name))
-        docker_testing.test_protocol(protocol_name)
+        docker_testing.test_protocol(protocol)
 
     @property
     def _sessions(self):

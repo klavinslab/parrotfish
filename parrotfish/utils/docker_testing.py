@@ -2,7 +2,7 @@ import json as j
 from pydent import AqSession
 
 
-def get_records(session, records):
+def get_records(session, name, records):
     record_dict = {}
 
     for model_string in records:
@@ -10,7 +10,7 @@ def get_records(session, records):
             data = record_info['data']
             new_data = format_data(data, record_dict)
             new_record = make_record(
-                session, model_string, new_data, record_dict)
+                session, name, model_string, new_data, record_dict)
 
             record_dict[record_info['tag']] = new_record
 
@@ -30,7 +30,7 @@ def format_data(data, record_dict):
     return new_data
 
 
-def make_record(session, model_string, data, record_dict):
+def make_record(session, name, model_string, data, record_dict):
     model_name = model_string[:-1]
     record = None
 
@@ -44,7 +44,7 @@ def make_record(session, model_string, data, record_dict):
         record = session.Item.load(data)
         record.make()
     elif model_name == "operation":
-        ot = session.OperationType.find(185)
+        ot = session.OperationType.find_by_name(name)
         record = ot.instance()
         record.x = record.y = record.parent_id = record.parent = 0
 
@@ -65,17 +65,17 @@ def make_record(session, model_string, data, record_dict):
     return record
 
 
-def test_protocol(name):
+def test_protocol(protocol):
     # OPEN A SESSION
     session = AqSession('neptune', 'aquarium', 'http://34.216.130.134:3000/')
 
     # READ THAT JSON
     json = None
-    with open('./test_data.json') as f:
+    with protocol.open_file('test_data.json', mode='r') as f:
         json = j.loads(f.read())
 
     # GET THOSE RECORDS
-    record_dict = get_records(session, json['records'])
+    record_dict = get_records(session, protocol.name, json['records'])
     print(record_dict)
 
     # SUBMIT THAT PLAN
