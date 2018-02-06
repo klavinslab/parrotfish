@@ -92,23 +92,29 @@ class CLI(object):
         current_env = self._session_manager.current_env
         category = current_env.get_category_dir(category_name)
         for protocol in category.list_dirs():
-            if protocol.has("source"):
-                # then its a Library
-                local_lib = current_env.read_library_type(category.name, protocol.name)
-                local_lib.code("source").update()
-            if protocol.has("protocol"):
-                # then its an OperationType
-                local_ot = current_env.read_operation_type(category.name, protocol.name)
-                for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
-                    code = getattr(local_ot, accessor)
-                    server_code = local_ot.code(accessor)
-                    diff_str = compare_content(server_code.content, code.content).strip()
-                    if diff_str != '':
-                        logger.cli("++ Updating {}/{} ({})".format(category.name, local_ot.name, accessor))
-                        print(diff_str)
-                        code.update()
-                    else:
-                        logger.cli("-- No changes for {}/{} ({})".format(category.name, local_ot.name, accessor))
+            self.push_one(protocol.name, category.name)
+
+    def push_one(self, category_name, protocol_name):
+        current_env = self._session_manager.current_env
+        category = current_env.get_category_dir(category_name)
+        protocol = current_env.get_protocol_dir(category_name, protocol_name)
+        if protocol.has("source"):
+            # then its a Library
+            local_lib = current_env.read_library_type(category.name, protocol.name)
+            local_lib.code("source").update()
+        if protocol.has("protocol"):
+            # then its an OperationType
+            local_ot = current_env.read_operation_type(category.name, protocol.name)
+            for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
+                code = getattr(local_ot, accessor)
+                server_code = local_ot.code(accessor)
+                diff_str = compare_content(server_code.content, code.content).strip()
+                if diff_str != '':
+                    logger.cli("++ Updating {}/{} ({})".format(category.name, local_ot.name, accessor))
+                    print(diff_str)
+                    code.update()
+                else:
+                    logger.cli("-- No changes for {}/{} ({})".format(category.name, local_ot.name, accessor))
         self._save()
 
     def _get_operation_types_from_sever(self, category):
@@ -137,7 +143,7 @@ class CLI(object):
     def test(self, protocol_name):
         """ Test a single protocol on an Aquarium Docker container """
         logger.cli("Testing protocol: {}".format(protocol_name))
-        docker_testing.test()
+        docker_testing.test_protocol(protocol_name)
 
     @property
     def _sessions(self):
