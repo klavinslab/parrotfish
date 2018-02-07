@@ -148,7 +148,9 @@ class CLI(object):
         current_env = self._session_manager.current_env
         protocol = current_env.get_protocol_dir(category_name, protocol_name)
         logger.cli("Testing protocol: {}".format(protocol_name))
-        docker_testing.test_protocol(protocol)
+        result = docker_testing.test_protocol(protocol)
+
+        logger.cli("Test results: {}".format(result))
 
     @property
     def _sessions(self):

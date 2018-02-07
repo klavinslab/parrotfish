@@ -1,4 +1,5 @@
 import json as j
+import subprocess
 from pydent import AqSession
 
 
@@ -65,56 +66,61 @@ def make_record(session, name, model_string, data, record_dict):
     return record
 
 
-def test_protocol(protocol):
-    # OPEN A SESSION
-    session = AqSession('neptune', 'aquarium', 'http://34.216.130.134:3000/')
-
-    # READ THAT JSON
-    json = None
-    with protocol.open_file('test_data.json', mode='r') as f:
-        json = j.loads(f.read())
-
+def submit_plan(session, protocol, json):
     # GET THOSE RECORDS
     record_dict = get_records(session, protocol.name, json['records'])
-    print(record_dict)
 
     # SUBMIT THAT PLAN
     plan = session.Plan.load({
-        'name': "Rehydrate Primer Test",
+        'name': '{} Test'.format(protocol.name),
         'layout': {'wires': None}})
     for op_tag in json['plan']['operations']:
         op = record_dict[op_tag]
-        print(op)
         plan.add_operation(op)
 
-    print(plan.operations)
-    print('added operation')
     plan.create()
-    print('created plan')
     plan.estimate_cost()
-    print('estimated cost')
     plan.validate()
-    print('validated plan')
     plan.show()
-    print('showed plan')
 
     plan.submit(session.current_user, session.current_user.budgets[0])
 
     # DEBUG THAT PLAN
     session.utils.batch_operations(
             {'operation_ids': [op.id for op in plan.operations]})
-    print('op batched')
     op = plan.operations[0]
     job = op.jobs[0]
-    print('got op and job')
     try:
         session.utils.job_debug(job.id)
     except Exception:
         pass
-    print('job debugged')
 
     # return result
     op.reload(session.Operation.find(op.id))
     print('JOB STATUS: {}'.format(op.status))
 
-    print('All done :)')
+    return {
+            'success': op.status == 'done',
+            'errors': []
+        }
+
+
+def test_protocol(protocol):
+    # RUN THIS DOCKER CONTAINER
+    subprocess.call(['bash', './parrotfish/utils/docker_container.sh', 'run'])
+
+    # OPEN A SESSION
+    session = AqSession('neptune', 'aquarium', 'http://localhost:3001/')
+
+    # READ THAT JSON
+    json = None
+    with protocol.open_file('test_data.json', mode='r') as f:
+        json = j.loads(f.read())
+
+    # SUBMIT THAT PLAN
+    result = submit_plan(session, protocol, json)
+
+    # KILL THIS DOCKER CONTAINER
+    subprocess.call(['bash', './parrotfish/utils/docker_container.sh', 'kill'])
+
+    return result
