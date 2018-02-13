@@ -105,10 +105,17 @@ def submit_plan(session, protocol, json):
         }
 
 
-def test_protocol(protocol):
+def start_container(port):
     # RUN THIS DOCKER CONTAINER
     subprocess.call(['bash', './parrotfish/utils/docker_container.sh', 'run'])
 
+
+def stop_container():
+    # KILL THIS DOCKER CONTAINER
+    subprocess.call(['bash', './parrotfish/utils/docker_container.sh', 'kill'])
+
+
+def test_protocol(protocol):
     # OPEN A SESSION
     session = AqSession('neptune', 'aquarium', 'http://localhost:3001/')
 
@@ -119,8 +126,5 @@ def test_protocol(protocol):
 
     # SUBMIT THAT PLAN
     result = submit_plan(session, protocol, json)
-
-    # KILL THIS DOCKER CONTAINER
-    subprocess.call(['bash', './parrotfish/utils/docker_container.sh', 'kill'])
 
     return result

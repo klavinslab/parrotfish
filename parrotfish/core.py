@@ -141,7 +141,30 @@ class CLI(object):
         self._save()
 
     def test(self, category_name, protocol_name):
+        session_name = self._session_manager.current_session.name
+        self._copy_operation(
+            category_name, protocol_name, session_name, "docker")
+        return
         """ Test a single protocol on an Aquarium Docker container """
+        logger.cli("Starting Docker container")
+        port = 3001
+        docker_testing.start_container(port)
+
+        logger.cli("Setting Docker session")
+        self.register(
+            "neptune",
+            "aquarium",
+            "http://localhost:{}".format(port),
+            "docker")
+        session_name = self._session_manager.current_session.name
+        self.set_session("docker")
+        self.fetch(category_name)
+
+        logger.cli(
+            "Copying protocol from {} to docker session".format(session_name))
+        self._copy_operation(
+            category_name, protocol_name, session_name, "docker")
+
         logger.cli("Pushing protocol: {}".format(protocol_name))
         self.push_one(category_name, protocol_name)
 
@@ -150,7 +173,24 @@ class CLI(object):
         logger.cli("Testing protocol: {}".format(protocol_name))
         result = docker_testing.test_protocol(protocol)
 
+        logger.cli("Unregistering Docker session")
+        self.unregister("docker")
+        self.set_session(session_name)
+
+        logger.cli("Stopping Docker container")
+        docker_testing.stop_container()
+
         logger.cli("Test results: {}".format(result))
+
+    def _copy_operation(self, category_name, protocol_name,
+                        sess1_name, sess2_name):
+        sess1 = self._session_manager.get(sess1_name)
+        sess2 = self._session_manager.get(sess2_name)
+        ot_dir1 = sess1.get_operation_type_dir(category_name, protocol_name)
+        ot_dir2 = sess2.get_operation_type_dir(category_name, protocol_name)
+        for accessor in ['protocol']:
+            ot_dir2.get(accessor).write(
+                ot_dir1.get(accessor).read())
 
     @property
     def _sessions(self):
