@@ -66,15 +66,15 @@ def make_record(session, name, model_string, data, record_dict):
     return record
 
 
-def submit_plan(session, protocol, json):
+def submit_plan(session, protocol, test_data):
     # GET THOSE RECORDS
-    record_dict = get_records(session, protocol.name, json['records'])
+    record_dict = get_records(session, protocol.name, test_data['records'])
 
     # SUBMIT THAT PLAN
     plan = session.Plan.load({
         'name': '{} Test'.format(protocol.name),
         'layout': {'wires': None}})
-    for op_tag in json['plan']['operations']:
+    for op_tag in test_data['plan']['operations']:
         op = record_dict[op_tag]
         plan.add_operation(op)
 
@@ -105,7 +105,7 @@ def submit_plan(session, protocol, json):
         }
 
 
-def start_container(port):
+def start_container():
     # RUN THIS DOCKER CONTAINER
     subprocess.call(['bash', './parrotfish/utils/docker_container.sh', 'run'])
 
@@ -120,11 +120,11 @@ def test_protocol(protocol):
     session = AqSession('neptune', 'aquarium', 'http://localhost:3001/')
 
     # READ THAT JSON
-    json = None
+    test_data = None
     with protocol.open_file('test_data.json', mode='r') as f:
-        json = j.loads(f.read())
+        test_data = j.load(f)
 
     # SUBMIT THAT PLAN
-    result = submit_plan(session, protocol, json)
+    result = submit_plan(session, protocol, test_data)
 
     return result

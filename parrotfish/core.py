@@ -141,54 +141,57 @@ class CLI(object):
         self._save()
 
     def test(self, category_name, protocol_name):
-        session_name = self._session_manager.current_session.name
-        self._copy_operation(
-            category_name, protocol_name, session_name, "docker")
-        return
         """ Test a single protocol on an Aquarium Docker container """
+        # Start container
         logger.cli("Starting Docker container")
-        port = 3001
-        docker_testing.start_container(port)
+        docker_testing.start_container()
 
+        # Init container session
         logger.cli("Setting Docker session")
+        session_name = self._session_manager.current_session.name
         self.register(
             "neptune",
             "aquarium",
-            "http://localhost:{}".format(port),
+            "http://localhost:3001",
             "docker")
-        session_name = self._session_manager.current_session.name
         self.set_session("docker")
         self.fetch(category_name)
 
+        # Copy OT from last session to container session
         logger.cli(
             "Copying protocol from {} to docker session".format(session_name))
-        self._copy_operation(
+        self._copy_operation_type(
             category_name, protocol_name, session_name, "docker")
 
+        # Push OT from container session to container
         logger.cli("Pushing protocol: {}".format(protocol_name))
         self.push_one(category_name, protocol_name)
 
+        # Test protocol on container
         current_env = self._session_manager.current_env
         protocol = current_env.get_protocol_dir(category_name, protocol_name)
         logger.cli("Testing protocol: {}".format(protocol_name))
         result = docker_testing.test_protocol(protocol)
 
+        # Remove container session
         logger.cli("Unregistering Docker session")
         self.unregister("docker")
         self.set_session(session_name)
 
+        # Stop container
         logger.cli("Stopping Docker container")
         docker_testing.stop_container()
 
         logger.cli("Test results: {}".format(result))
 
-    def _copy_operation(self, category_name, protocol_name,
-                        sess1_name, sess2_name):
+    def _copy_operation_type(self, category_name, protocol_name,
+                             sess1_name, sess2_name):
         sess1 = self._session_manager.get(sess1_name)
         sess2 = self._session_manager.get(sess2_name)
         ot_dir1 = sess1.get_operation_type_dir(category_name, protocol_name)
         ot_dir2 = sess2.get_operation_type_dir(category_name, protocol_name)
-        for accessor in ['protocol']:
+        for accessor in ['protocol', 'precondition', 'documentation',
+                         'cost_model', 'test_data']:
             ot_dir2.get(accessor).write(
                 ot_dir1.get(accessor).read())
 

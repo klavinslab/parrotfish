@@ -42,7 +42,8 @@ class SessionEnvironment(ODir):
                |   |──OperationType1.rb                 (protocol code)
                |   |──OperationType1__cost_model.rb     (code model code)
                |   |──OperationType1__documentation.md  (documentation markdown)
-               |   └──OperationType1__precondition.rb   (precondition code)
+               |   |──OperationType1__precondition.rb   (precondition code)
+               |   └──test_data.json                    (data for testing)
                └──LibraryType1              (Library folder)
                    |──LibraryType1.rb                   (library code)
                    └──LibraryType1.json                 (data related to the Library)
@@ -255,6 +256,7 @@ class SessionEnvironment(ODir):
         ot_dir.add_file('{}__precondition.rb'.format(basename), attr='precondition')
         ot_dir.add_file('{}__cost_model.rb'.format(basename), attr='cost_model')
         ot_dir.add_file('{}__documentation.md'.format(basename), attr='documentation')
+        ot_dir.add_file('test_data.json', attr='test_data')
 
         return ot_dir
 
@@ -289,10 +291,6 @@ class SessionEnvironment(ODir):
         """
         ot_dir = self.get_operation_type_dir(operation_type.category, operation_type.name)
 
-        include = {
-            'field_types': 'allowable_field_types'
-        }
-
         metadata = operation_type.dump(
             include={'protocol': {},
                      'documentation': {},
@@ -301,6 +299,7 @@ class SessionEnvironment(ODir):
                      "field_types": "allowable_field_types"
                      }
         )
+        metadata['test_data'] = {'content': 'this is example'}
 
         # write metadata
         ot_dir.meta.dump_json(
@@ -309,7 +308,7 @@ class SessionEnvironment(ODir):
         )
 
         # write codes
-        for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
+        for accessor in ['protocol', 'precondition', 'documentation', 'cost_model', 'test_data']:
             logger.verbose("    saving {}".format(accessor))
             ot_dir.get(accessor).write(metadata[accessor]['content'])
 
@@ -346,6 +345,8 @@ class SessionEnvironment(ODir):
         metadata = ot_dir.meta.load_json()  # load the meta data from the .json file
         ot = OperationType.load(metadata)
 
+        print(metadata.keys())
+        print(metadata['test_data'])
         ot.protocol.content = ot_dir.protocol.read()
         ot.precondition.content = ot_dir.precondition.read()
         ot.documentation.content = ot_dir.documentation.read()
@@ -400,7 +401,8 @@ class SessionManager(ODir):
         |       |   |   |──OperationType1.rb
         |       |   |   |──OperationType1__cost_model.rb
         |       |   |   |──OperationType1__documentation.rb
-        |       |   |   └──OperationType1__precondition.rb
+        |       |   |   |──OperationType1__precondition.rb
+        |       |   |   └──test_data.rb
         |       |   └──LibraryType1
         |       |       |──LibraryType1.rb
         |       |       └──LibraryType1.json
