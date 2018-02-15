@@ -1,4 +1,5 @@
 import json as j
+import os
 import subprocess
 from pydent import AqSession
 
@@ -107,12 +108,14 @@ def submit_plan(session, protocol, test_data):
 
 def start_container():
     # RUN THIS DOCKER CONTAINER
-    subprocess.call(['bash', './parrotfish/utils/docker_container.sh', 'run'])
+    here = os.path.abspath(os.path.dirname(__file__))
+    subprocess.call(['bash', '{}/docker_container.sh'.format(here), 'run'])
 
 
 def stop_container():
     # KILL THIS DOCKER CONTAINER
-    subprocess.call(['bash', './parrotfish/utils/docker_container.sh', 'kill'])
+    here = os.path.abspath(os.path.dirname(__file__))
+    subprocess.call(['bash', '{}/docker_container.sh'.format(here), 'kill'])
 
 
 def test_protocol(protocol):
