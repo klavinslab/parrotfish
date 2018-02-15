@@ -2,8 +2,85 @@
 Functions for running Aquarium specific server-side tests
 """
 
-from pydent.models import OperationType
 import json
+
+
+def generate_test_data(ot_dict):
+    num_ops = 3
+
+    # Generate records from Field Types of op type
+    samples = []
+    items = []
+    operations = []
+    for idx in range(num_ops):
+        op_inputs = []
+        op_outputs = []
+        for ft in ot_dict['field_types']:
+            ft_name = ft['name']
+            role = ft['role']
+
+            # Samples
+            s_tag = '{}_samp{}'.format(ft_name, idx)
+            s_name = 'Test {} {}'.format(ft_name, idx)
+            s = {
+                'tag': s_tag,
+                'data': {
+                    'name': s_name,
+                    'project': 'trident',
+                    'sample_type_id': 21,
+                    'user_id': 1
+                }
+            }
+            samples.append(s)
+
+            # Items
+            if role == 'input':
+                i_tag = '{}_item{}'.format(ft_name, idx)
+                i = {
+                    'tag': i_tag,
+                    'data': {
+                        'sample': s_tag,
+                        'object_type_id': 608
+                    }
+                }
+                items.append(i)
+
+            # Op inputs and outputs
+            if role == 'input':
+                op_inputs.append({
+                    'name': ft_name,
+                    'sample': s_tag,
+                    'item': i_tag
+                })
+            else:
+                op_outputs.append({
+                    'name': ft_name,
+                    'sample': s_tag
+                })
+
+        # Operations
+        o_tag = 'op{}'.format(idx)
+        o = {
+            'tag': o_tag,
+            'data': {
+                'inputs': op_inputs,
+                'outputs': op_outputs
+            }
+        }
+
+        operations.append(o)
+
+    data = {
+        'records': {
+            'samples': samples,
+            'items': items,
+            'operations': operations
+        },
+        'plan': {
+            'operations': [op['tag'] for op in operations]
+        }
+    }
+    return json.dumps(data, indent=2)
 
 
 def generate_random_operations(ot, num_ops):
@@ -18,7 +95,8 @@ def generate_random_operations(ot, num_ops):
     :rtype: list
     """
     session = ot._session
-    test_ops_data = session.utils.aqhttp.get(f'operation_types/{ot.id}/random/{num_ops}')
+    test_ops_data = session.utils.aqhttp.get(
+        'operation_types/{}/random/{}'.format(ot.id, num_ops))
     return test_ops_data
 
 
@@ -53,7 +131,8 @@ def run_operation_type_test(ot, testing_operations, use_precondition=False):
     }
     parsed_result['job'].state = json.loads(parsed_result['job'].state)
 
-    parsed_result['passed'] = parsed_result['job'].state[-1]['operation'] == 'complete'
+    parsed_result['passed'] = \
+        parsed_result['job'].state[-1]['operation'] == 'complete'
 
     return parsed_result
 

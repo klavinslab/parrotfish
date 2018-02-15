@@ -11,6 +11,7 @@ from opath import ODir
 from parrotfish.__version__ import __version__
 from parrotfish.utils import sanitize_filename, sanitize_attribute
 from parrotfish.utils.log import CustomLogging
+from parrotfish.utils.testing_tools import generate_test_data
 from pydent import AqSession
 from pydent.models import OperationType, Library
 
@@ -299,7 +300,7 @@ class SessionEnvironment(ODir):
                      "field_types": "allowable_field_types"
                      }
         )
-        metadata['test_data'] = {'content': 'this is example'}
+        metadata['test_data'] = {'content': generate_test_data(metadata)}
 
         # write metadata
         ot_dir.meta.dump_json(
@@ -345,8 +346,6 @@ class SessionEnvironment(ODir):
         metadata = ot_dir.meta.load_json()  # load the meta data from the .json file
         ot = OperationType.load(metadata)
 
-        print(metadata.keys())
-        print(metadata['test_data'])
         ot.protocol.content = ot_dir.protocol.read()
         ot.precondition.content = ot_dir.precondition.read()
         ot.documentation.content = ot_dir.documentation.read()
