@@ -13,15 +13,19 @@ def generate_test_data(ot_dict):
     items = []
     operations = []
     for idx in range(num_ops):
+        # Determine routing for operation
+        fts_by_route = {}
+        for ft in ot_dict['field_types']:
+            route = ft['routing']
+            fts_by_route.setdefault(route, []).append(ft)
+
+        # Build Field Types by route
         op_inputs = []
         op_outputs = []
-        for ft in ot_dict['field_types']:
-            ft_name = ft['name']
-            role = ft['role']
-
-            # Samples
-            s_tag = '{}_samp{}'.format(ft_name, idx)
-            s_name = 'Test {} {}'.format(ft_name, idx)
+        for route in fts_by_route:
+            # Sample
+            s_tag = '{}_samp{}'.format(route, idx)
+            s_name = 'Test {} {}'.format(route, idx)
             s = {
                 'tag': s_tag,
                 'data': {
@@ -33,30 +37,35 @@ def generate_test_data(ot_dict):
             }
             samples.append(s)
 
-            # Items
-            if role == 'input':
-                i_tag = '{}_item{}'.format(ft_name, idx)
-                i = {
-                    'tag': i_tag,
-                    'data': {
-                        'sample': s_tag,
-                        'object_type_id': 608
-                    }
-                }
-                items.append(i)
+            # Field Types
+            for ft in fts_by_route[route]:
+                ft_name = ft['name']
+                role = ft['role']
 
-            # Op inputs and outputs
-            if role == 'input':
-                op_inputs.append({
-                    'name': ft_name,
-                    'sample': s_tag,
-                    'item': i_tag
-                })
-            else:
-                op_outputs.append({
-                    'name': ft_name,
-                    'sample': s_tag
-                })
+                # Items
+                if role == 'input':
+                    i_tag = '{}_item{}'.format(ft_name, idx)
+                    i = {
+                        'tag': i_tag,
+                        'data': {
+                            'sample': s_tag,
+                            'object_type_id': 608
+                        }
+                    }
+                    items.append(i)
+
+                # Op inputs and outputs
+                if role == 'input':
+                    op_inputs.append({
+                        'name': ft_name,
+                        'sample': s_tag,
+                        'item': i_tag
+                    })
+                else:
+                    op_outputs.append({
+                        'name': ft_name,
+                        'sample': s_tag
+                    })
 
         # Operations
         o_tag = 'op{}'.format(idx)

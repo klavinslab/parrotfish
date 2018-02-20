@@ -4,10 +4,10 @@ import subprocess
 from pydent import AqSession
 
 
-def get_records(session, name, records):
+def get_records(session, name, records, record_names):
     record_dict = {}
 
-    for model_string in records:
+    for model_string in record_names:
         for record_info in records[model_string]:
             data = record_info['data']
             new_data = format_data(data, record_dict)
@@ -69,7 +69,9 @@ def make_record(session, name, model_string, data, record_dict):
 
 def submit_plan(session, protocol, test_data):
     # GET THOSE RECORDS
-    record_dict = get_records(session, protocol.name, test_data['records'])
+    record_names = ['samples', 'items', 'operations']
+    record_dict = get_records(
+        session, protocol.name, test_data['records'], record_names)
 
     # SUBMIT THAT PLAN
     plan = session.Plan.load({
