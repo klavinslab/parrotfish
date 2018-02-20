@@ -106,10 +106,16 @@ def submit_plan(session, protocol, test_data):
         }
 
 
-def start_container():
+def start_container(reset):
     # RUN THIS DOCKER CONTAINER
-    here = os.path.abspath(os.path.dirname(__file__))
-    subprocess.call(['bash', '{}/docker_container.sh'.format(here), 'run'])
+    command = 'sudo docker ps -aqf ancestor=aq'
+    check_running = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
+    output, error = check_running.communicate()
+    running = len(output) > 0
+
+    if reset or not running:
+        here = os.path.abspath(os.path.dirname(__file__))
+        subprocess.call(['bash', '{}/docker_container.sh'.format(here), 'run'])
 
 
 def stop_container():

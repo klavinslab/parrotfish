@@ -140,10 +140,10 @@ class CLI(object):
             curr_env.write_library(lib)
         self._save()
 
-    def test(self, category_name, protocol_name):
+    def test(self, category_name, protocol_name, reset=False):
         """ Test a single protocol on an Aquarium Docker container """
         # Start container
-        self.start_container()
+        docker_testing.start_container(reset)
 
         # Init container session
         logger.cli("Setting Docker session")
@@ -178,7 +178,7 @@ class CLI(object):
         self.set_session(session_name)
 
         # Stop container
-        self.stop_container()
+        # self.stop_container()
 
         logger.cli("Test results: {}".format(result))
 
@@ -192,19 +192,6 @@ class CLI(object):
                          'cost_model', 'test_data']:
             ot_dir2.get(accessor).write(
                 ot_dir1.get(accessor).read())
-
-    def start_container(self):
-        try:
-            # Start container
-            logger.cli("Starting Docker container")
-            docker_testing.start_container()
-        except Exception:
-            logger.cli("Container already running")
-
-    def stop_container(self):
-        # Stop container
-        logger.cli("Stopping Docker container")
-        docker_testing.stop_container()
 
     @property
     def _sessions(self):
