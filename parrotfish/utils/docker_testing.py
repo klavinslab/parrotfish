@@ -118,6 +118,9 @@ def start_container(reset):
     if reset or not running:
         here = os.path.abspath(os.path.dirname(__file__))
         subprocess.call(['bash', '{}/docker_container.sh'.format(here), 'run'])
+        return True
+
+    return False
 
 
 def stop_container():

@@ -143,7 +143,7 @@ class CLI(object):
     def test(self, category_name, protocol_name, reset=False):
         """ Test a single protocol on an Aquarium Docker container """
         # Start container
-        docker_testing.start_container(reset)
+        self.start_container(reset)
 
         # Init container session
         logger.cli("Setting Docker session")
@@ -182,8 +182,21 @@ class CLI(object):
 
         logger.cli("Test results: {}".format(result))
 
+    def start_container(self, reset=False):
+        """Start an Aqarium Docker container"""
+        if docker_testing.start_container(reset):
+            logger.cli("Container started!")
+        else:
+            logger.cli("Container already running: use --reset to restart")
+
+    def stop_container(self):
+        """Stop an Aqarium Docker container"""
+        docker_testing.stop_container()
+        logger.cli("Container killed")
+
     def _copy_operation_type(self, category_name, protocol_name,
                              sess1_name, sess2_name):
+        """Copy Operation Type files from one session to another"""
         sess1 = self._session_manager.get(sess1_name)
         sess2 = self._session_manager.get(sess2_name)
         ot_dir1 = sess1.get_operation_type_dir(category_name, protocol_name)
