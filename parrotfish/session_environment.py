@@ -259,6 +259,10 @@ class SessionEnvironment(ODir):
         ot_dir.add_file('{}__cost_model.rb'.format(basename), attr='cost_model')
         ot_dir.add_file('{}__documentation.md'.format(basename), attr='documentation')
 
+        ot_dir.add('object_types')
+        ot_dir.add('sample_types')
+        ot_dir.add('testing')
+
         return ot_dir
 
     def get_test_dir(ot_dir):

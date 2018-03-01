@@ -19,8 +19,8 @@ def generate_test_data(ot_dict):
     num_ops = 3
 
     # Link to Sample Types and Object Types
-    sample_types = _get_types('sample_type', ot_dict)
-    object_types = _get_types('object_type', ot_dict)
+    sample_types = _get_types('sample_type', ot_dict['field_types'])
+    object_types = _get_types('object_type', ot_dict['field_types'])
 
     # Generate records from Field Types of op type
     samples = []
@@ -119,27 +119,47 @@ def generate_test_data(ot_dict):
     return json.dumps(data, indent=2)
 
 
-def _get_types(record_type, ot_dict):
+def _get_types(model_name, fts):
+    """
+    Creates a list of data for :class:`SampleType` or :class:`ObjectType`
+
+    :param model_name: name of the desired model
+    :type model_name: str
+    :param fts: :class:`FieldType`s as a list of dicts
+    :type fts: list
+    :return: a list of record data
+    :rtype: list
+    """
     records = []
-    names = _names_from_fts(record_type, ot_dict['field_types'])
+    names = _names_from_fts(model_name, fts)
     for name in names:
-        suff = 'st' if 'sample' in record_type else 'ot'
-        tag = '{}_{}'.format(name.lower(), suff)
+        suffix = 'st' if 'sample' in model_name else 'ot'
+        tag = '{}_{}'.format(name.lower(), suffix)
 
         if tag not in [record['tag'] for record in records]:
             records.append({
                 'tag': tag,
-                'source': '{}s/{}.json'.format(record_type, name)
+                'source': '{}s/{}.json'.format(model_name, name)
             })
 
     return records
 
 
-def _names_from_fts(record_type, fts):
-    return [sanitize_filename(aft[record_type]['name'])
+def _names_from_fts(model_name, fts):
+    """
+    Creates a list of all of the names of records of a given model
+
+    :param model_name: name of the desired model
+    :type model_name: str
+    :param fts: :class:`FieldType`s as a list of dicts
+    :type fts: list
+    :return: a list of record names in fts of model_name
+    :rtype: list
+    """
+    return [sanitize_filename(aft[model_name]['name'])
             for ft in fts
             for aft in ft['allowable_field_types']
-            if aft[record_type]]
+            if aft[model_name]]
 
 
 def generate_random_operations(ot, num_ops):

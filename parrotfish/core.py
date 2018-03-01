@@ -207,9 +207,12 @@ class CLI(object):
         sess1 = self._session_manager.get(sess1_name)
         sess2 = self._session_manager.get(sess2_name)
 
+        # Copy all files from current_session to docker
         rmtree(sess2.abspath)
         copytree(sess1.abspath, sess2.abspath)
-        sess2.write_operation_type(ot)
+
+        # Make this operation type visible to ODir
+        sess2.get_operation_type_dir(ot.category, ot.name)
 
     @property
     def _sessions(self):
