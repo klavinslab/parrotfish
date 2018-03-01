@@ -8,6 +8,14 @@ from parrotfish.utils import sanitize_filename
 
 
 def generate_test_data(ot_dict):
+    """
+    Builds JSON-formatted string for testing data
+
+    :param ot_dict: an :class:`ObjectType` as a dictionary
+    :type ot_dict: dict
+    :return: testing data
+    :rtype: str
+    """
     num_ops = 3
 
     # Link to Sample Types and Object Types

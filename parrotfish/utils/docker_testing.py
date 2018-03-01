@@ -1,3 +1,7 @@
+"""
+Methods for testing Operation Types in a Docker container
+"""
+
 import json as j
 import os
 import subprocess
@@ -5,6 +9,16 @@ from pydent import AqSession
 
 
 def get_records(session, protocol, records, record_names):
+    """
+    Generates a dictionary of all new records by their tag
+
+    :param session: session with container
+    :type session: AqSession
+    :param protocol: directory that manages the protocol
+    :type protocol: ODir
+    :return: dictionary of all records by tag
+    :rtype: dict
+    """
     record_dict = {}
 
     for model_string in record_names:
@@ -25,6 +39,16 @@ def get_records(session, protocol, records, record_names):
 
 
 def format_data(data, record_dict):
+    """
+    Replaces tags in given data with corresponding record ids
+
+    :param data: raw data for a given record
+    :type data: dict
+    :param record_dict: dictionary of all records by tag
+    :type record_dict: dict
+    :return: formatted data
+    :rtype: dict
+    """
     new_data = {}
     for attr in data:
         tag = data[attr]
@@ -38,6 +62,23 @@ def format_data(data, record_dict):
 
 
 def make_record(session, name, model_string, data, record_dict):
+    """
+    Makes a new record of the given model (or loads an existing one
+    if applicable)
+
+    :param session: session with container
+    :type session: AqSession
+    :param name: name of the :class:`OperationType`
+    :type name: str
+    :param model_string: name of the model
+    :type model_string: str
+    :param data: formatted data for given record
+    :type data: dict
+    :param record_dict: dictionary of all records by tag
+    :type record_dict: dict
+    :return: record made from data
+    :rtype: ModelBase
+    """
     model_name = model_string[:-1]
     record = None
 
@@ -79,6 +120,18 @@ def make_record(session, name, model_string, data, record_dict):
 
 
 def submit_plan(session, protocol, test_data):
+    """
+    Submits a plan to container given test data
+
+    :param session: session with container
+    :type session: AqSession
+    :param protocol: directory that manages the protocol
+    :type protocol: ODir
+    :param test_data: data for all records to test on
+    :type test_data: dict
+    :return: plan information (success status and errors)
+    :rtype: dict
+    """
     # GET THOSE RECORDS
     record_names = [
         'sample_types',
@@ -120,12 +173,43 @@ def submit_plan(session, protocol, test_data):
     print('JOB STATUS: {}'.format(op.status))
 
     return {
-            'success': op.status == 'done',
-            'errors': []
-        }
+        'success': op.status == 'done',
+        'errors': []
+    }
+
+
+def test_protocol(protocol):
+    """
+    Open a session with running container, and submit the plan with test data
+
+    :param protocol: directory that manages the protocol
+    :type protocol: ODir
+    :return: plan information (success status and errors)
+    :rtype: dict
+    """
+    # OPEN A SESSION
+    session = AqSession('neptune', 'aquarium', 'http://localhost:3001/')
+
+    # READ THAT JSON
+    test_data = None
+    with protocol.open_file('testing/data.json', mode='r') as f:
+        test_data = j.load(f)
+
+    # SUBMIT THAT PLAN
+    result = submit_plan(session, protocol, test_data)
+
+    return result
 
 
 def start_container(reset):
+    """
+    Start a Docker container
+
+    :param reset: kill the running container if one exists
+    :type reset: bool
+    :return: whether a new container was started
+    :rtype: bool
+    """
     # RUN THIS DOCKER CONTAINER
     command = 'sudo docker ps -aqf ancestor=aq'
     check_running = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
@@ -141,21 +225,7 @@ def start_container(reset):
 
 
 def stop_container():
+    """ Stop a Docker container """
     # KILL THIS DOCKER CONTAINER
     here = os.path.abspath(os.path.dirname(__file__))
     subprocess.call(['bash', '{}/docker_container.sh'.format(here), 'kill'])
-
-
-def test_protocol(protocol):
-    # OPEN A SESSION
-    session = AqSession('neptune', 'aquarium', 'http://localhost:3001/')
-
-    # READ THAT JSON
-    test_data = None
-    with protocol.open_file('testing/data.json', mode='r') as f:
-        test_data = j.load(f)
-
-    # SUBMIT THAT PLAN
-    result = submit_plan(session, protocol, test_data)
-
-    return result
