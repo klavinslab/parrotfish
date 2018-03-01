@@ -5,6 +5,7 @@ Classes for managing Aquarium sessions and protocols
 import datetime
 import os
 from glob import glob
+import json
 
 import dill
 from opath import ODir
@@ -257,9 +258,14 @@ class SessionEnvironment(ODir):
         ot_dir.add_file('{}__precondition.rb'.format(basename), attr='precondition')
         ot_dir.add_file('{}__cost_model.rb'.format(basename), attr='cost_model')
         ot_dir.add_file('{}__documentation.md'.format(basename), attr='documentation')
-        ot_dir.add_file('test_data.json', attr='test_data')
 
         return ot_dir
+
+    def get_test_dir(ot_dir):
+        test_dir = ot_dir.add('Testing')
+        test_dir.add_file('data.json', attr='data')
+
+        return test_dir
 
     def get_library_type_dir(self, category, library_name):
         """
@@ -297,10 +303,14 @@ class SessionEnvironment(ODir):
                      'documentation': {},
                      'cost_model': {},
                      'precondition': {},
-                     "field_types": "allowable_field_types"
+                     "field_types": {
+                         "allowable_field_types": {
+                             "sample_type",
+                             "object_type"
+                         }
+                     }
                      }
         )
-        metadata['test_data'] = {'content': generate_test_data(metadata)}
 
         # write metadata
         ot_dir.meta.dump_json(
@@ -309,9 +319,28 @@ class SessionEnvironment(ODir):
         )
 
         # write codes
-        for accessor in ['protocol', 'precondition', 'documentation', 'cost_model', 'test_data']:
+        for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
             logger.verbose("    saving {}".format(accessor))
             ot_dir.get(accessor).write(metadata[accessor]['content'])
+
+        # write sample types
+        sample_type_dir = ot_dir.add('sample_types')
+        sample_types = [aft.sample_type
+                        for ft in operation_type.field_types
+                        for aft in ft.allowable_field_types]
+        self.write_records_to_dir(sample_type_dir, sample_types)
+
+        # write object types
+        object_type_dir = ot_dir.add('object_types')
+        object_types = [aft.object_type
+                        for ft in operation_type.field_types
+                        for aft in ft.allowable_field_types]
+        self.write_records_to_dir(object_type_dir, object_types)
+
+        # write test data
+        testing_dir = ot_dir.add('testing')
+        testing_dir.add_file('data.json', attr='data')
+        testing_dir.get('data').write(generate_test_data(metadata))
 
     def write_library(self, library):
         """
@@ -329,6 +358,14 @@ class SessionEnvironment(ODir):
 
         # write codes
         lib_dir.source.write(library.code('source').content)
+
+    def write_records_to_dir(self, target_dir, records):
+        for rec in records:
+            if rec:
+                file_name = self._sanitize_name(rec.name)
+                target_dir.add_file('{}.json'.format(file_name), attr=file_name)
+                target_dir.get(file_name).write(
+                    json.dumps(rec.dump(relations='field_types'), indent=2))
 
     def read_operation_type(self, category, name):
         """

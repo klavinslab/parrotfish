@@ -4,15 +4,20 @@ import subprocess
 from pydent import AqSession
 
 
-def get_records(session, name, records, record_names):
+def get_records(session, protocol, records, record_names):
     record_dict = {}
 
     for model_string in record_names:
         for record_info in records[model_string]:
-            data = record_info['data']
+            if 'data' in record_info:
+                data = record_info['data']
+            else:
+                with protocol.open_file(record_info['source'], mode='r') as f:
+                    data = j.load(f)
+
             new_data = format_data(data, record_dict)
             new_record = make_record(
-                session, name, model_string, new_data, record_dict)
+                session, protocol.name, model_string, new_data, record_dict)
 
             record_dict[record_info['tag']] = new_record
 
@@ -36,7 +41,13 @@ def make_record(session, name, model_string, data, record_dict):
     model_name = model_string[:-1]
     record = None
 
-    if model_name == "sample":
+    if model_name == "sample_type":
+        record = session.SampleType.load(data)
+        record.save()
+    elif model_name == "object_type":
+        record = session.ObjectType.load(data)
+        record.save()
+    elif model_name == "sample":
         try:
             record = session.Sample.load(data)
             record.save()
@@ -69,9 +80,15 @@ def make_record(session, name, model_string, data, record_dict):
 
 def submit_plan(session, protocol, test_data):
     # GET THOSE RECORDS
-    record_names = ['samples', 'items', 'operations']
+    record_names = [
+        'sample_types',
+        'object_types',
+        'samples',
+        'items',
+        'operations'
+    ]
     record_dict = get_records(
-        session, protocol.name, test_data['records'], record_names)
+        session, protocol, test_data['records'], record_names)
 
     # SUBMIT THAT PLAN
     plan = session.Plan.load({
@@ -135,7 +152,7 @@ def test_protocol(protocol):
 
     # READ THAT JSON
     test_data = None
-    with protocol.open_file('test_data.json', mode='r') as f:
+    with protocol.open_file('testing/data.json', mode='r') as f:
         test_data = j.load(f)
 
     # SUBMIT THAT PLAN

@@ -5,6 +5,7 @@ Core functions for interacting with ParrotFish
 import os
 import tempfile
 from pathlib import Path
+from opath.utils import rmtree, copytree
 
 import fire
 from cryptography.fernet import Fernet
@@ -142,45 +143,52 @@ class CLI(object):
 
     def test(self, category_name, protocol_name, reset=False):
         """ Test a single protocol on an Aquarium Docker container """
-        # Start container
-        self.start_container(reset)
+        session = self._session_manager.current_session
+        session_name = session.name
 
-        # Init container session
-        logger.cli("Setting Docker session")
-        session_name = self._session_manager.current_session.name
-        self.register(
-            "neptune",
-            "aquarium",
-            "http://localhost:3001",
-            "docker")
-        self.set_session("docker")
-        self.fetch(category_name)
+        try:
+            # Start container
+            self.start_container(reset)
 
-        # Copy OT from last session to container session
-        logger.cli(
-            "Copying protocol from {} to docker session".format(session_name))
-        self._copy_operation_type(
-            category_name, protocol_name, session_name, "docker")
+            # Init container session
+            logger.cli("Setting Docker session")
+            self.register(
+                "neptune",
+                "aquarium",
+                "http://localhost:3001",
+                "docker")
+            self.set_session("docker")
+            # self.fetch(category_name)
 
-        # Push OT from container session to container
-        logger.cli("Pushing protocol: {}".format(protocol_name))
-        self.push_one(category_name, protocol_name)
+            # Copy OT from last session to container session
+            logger.cli(
+                "Copying protocol from {} to docker session".format(session_name))
+            ot = session.OperationType.find_by_name(protocol_name)
+            self._copy_operation_type(session_name, "docker", ot)
 
-        # Test protocol on container
-        current_env = self._session_manager.current_env
-        protocol = current_env.get_protocol_dir(category_name, protocol_name)
-        logger.cli("Testing protocol: {}".format(protocol_name))
-        result = docker_testing.test_protocol(protocol)
+            # Push OT from container session to container
+            logger.cli("Pushing protocol: {}".format(protocol_name))
+            self.push_one(category_name, protocol_name)
 
-        # Remove container session
-        logger.cli("Unregistering Docker session")
-        self.unregister("docker")
-        self.set_session(session_name)
+            # Test protocol on container
+            current_env = self._session_manager.current_env
+            protocol = current_env.get_protocol_dir(category_name, protocol_name)
+            logger.cli("Testing protocol: {}".format(protocol_name))
+            result = docker_testing.test_protocol(protocol)
 
-        # Stop container
-        # self.stop_container()
+            # Remove container session
+            logger.cli("Unregistering Docker session")
+            self.unregister("docker")
+            self.set_session(session_name)
 
-        logger.cli("Test results: {}".format(result))
+            # Stop container
+            # self.stop_container()
+
+            logger.cli("Test results: {}".format(result))
+        except Exception:
+            self.unregister("docker")
+            self.set_session(session_name)
+            raise
 
     def start_container(self, reset=False):
         """Start an Aqarium Docker container"""
@@ -194,17 +202,14 @@ class CLI(object):
         docker_testing.stop_container()
         logger.cli("Container killed")
 
-    def _copy_operation_type(self, category_name, protocol_name,
-                             sess1_name, sess2_name):
+    def _copy_operation_type(self, sess1_name, sess2_name, ot):
         """Copy Operation Type files from one session to another"""
         sess1 = self._session_manager.get(sess1_name)
         sess2 = self._session_manager.get(sess2_name)
-        ot_dir1 = sess1.get_operation_type_dir(category_name, protocol_name)
-        ot_dir2 = sess2.get_operation_type_dir(category_name, protocol_name)
-        for accessor in ['protocol', 'precondition', 'documentation',
-                         'cost_model', 'test_data']:
-            ot_dir2.get(accessor).write(
-                ot_dir1.get(accessor).read())
+
+        rmtree(sess2.abspath)
+        copytree(sess1.abspath, sess2.abspath)
+        sess2.write_operation_type(ot)
 
     @property
     def _sessions(self):

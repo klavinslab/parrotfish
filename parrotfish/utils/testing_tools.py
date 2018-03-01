@@ -4,9 +4,15 @@ Functions for running Aquarium specific server-side tests
 
 import json
 
+from parrotfish.utils import sanitize_filename
+
 
 def generate_test_data(ot_dict):
     num_ops = 3
+
+    # Link to Sample Types and Object Types
+    sample_types = _get_types('sample_type', ot_dict)
+    object_types = _get_types('object_type', ot_dict)
 
     # Generate records from Field Types of op type
     samples = []
@@ -23,6 +29,11 @@ def generate_test_data(ot_dict):
         op_inputs = []
         op_outputs = []
         for route in fts_by_route:
+            # Sample Type
+            st_names = _names_from_fts('sample_type', ot_dict['field_types'])
+            st_tag = ('{}_st'.format(st_names[0].lower())
+                      if len(st_names) > 0 else None)
+
             # Sample
             s_tag = '{}_samp{}'.format(route, idx)
             s_name = 'Test {} {}'.format(route, idx)
@@ -31,7 +42,7 @@ def generate_test_data(ot_dict):
                 'data': {
                     'name': s_name,
                     'project': 'trident',
-                    'sample_type_id': 21,
+                    'sample_type': st_tag,
                     'user_id': 1
                 }
             }
@@ -42,6 +53,12 @@ def generate_test_data(ot_dict):
                 ft_name = ft['name']
                 role = ft['role']
 
+                # Object Type
+                ot_names = _names_from_fts(
+                    'object_type', ot_dict['field_types'])
+                ot_tag = ('{}_ot'.format(ot_names[0].lower())
+                          if len(ot_names) > 0 else None)
+
                 # Items
                 if role == 'input':
                     i_tag = '{}_item{}'.format(ft_name, idx)
@@ -49,7 +66,7 @@ def generate_test_data(ot_dict):
                         'tag': i_tag,
                         'data': {
                             'sample': s_tag,
-                            'object_type_id': 608
+                            'object_type': ot_tag
                         }
                     }
                     items.append(i)
@@ -81,6 +98,8 @@ def generate_test_data(ot_dict):
 
     data = {
         'records': {
+            'object_types': object_types,
+            'sample_types': sample_types,
             'samples': samples,
             'items': items,
             'operations': operations
@@ -90,6 +109,29 @@ def generate_test_data(ot_dict):
         }
     }
     return json.dumps(data, indent=2)
+
+
+def _get_types(record_type, ot_dict):
+    records = []
+    names = _names_from_fts(record_type, ot_dict['field_types'])
+    for name in names:
+        suff = 'st' if 'sample' in record_type else 'ot'
+        tag = '{}_{}'.format(name.lower(), suff)
+
+        if tag not in [record['tag'] for record in records]:
+            records.append({
+                'tag': tag,
+                'source': '{}s/{}.json'.format(record_type, name)
+            })
+
+    return records
+
+
+def _names_from_fts(record_type, fts):
+    return [sanitize_filename(aft[record_type]['name'])
+            for ft in fts
+            for aft in ft['allowable_field_types']
+            if aft[record_type]]
 
 
 def generate_random_operations(ot, num_ops):
