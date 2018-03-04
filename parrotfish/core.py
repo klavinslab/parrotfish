@@ -9,6 +9,7 @@ from opath.utils import rmtree, copytree
 
 import fire
 from cryptography.fernet import Fernet
+from colorama import Fore
 from parrotfish.session_environment import SessionManager
 from parrotfish.utils import CustomLogging, docker_testing, format_json, compare_content
 from requests.exceptions import InvalidSchema
@@ -109,14 +110,21 @@ class CLI(object):
             for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
                 code = getattr(local_ot, accessor)
                 server_code = local_ot.code(accessor)
+
                 diff_str = compare_content(server_code.content, code.content).strip()
                 if diff_str != '':
-                    logger.cli("++ Updating {}/{} ({})".format(category.name, local_ot.name, accessor))
-                    print(diff_str)
-                    code.update()
+                    # Local change, so fetch remote and compare
+                    remote_ot = self._session_manager.current_session.OperationType.where({"category": category.name, "name": protocol.name})[0]
+                    remote_code = getattr(remote_ot, accessor)
+                    if code.id != remote_code.id:
+                        logger.cli(Fore.RED + "Local version of {}/{} ({}) out of date. Please fetch before pushing again: Push unsuccessful!".format(category.name, protocol.name, accessor))
+                    else:
+                        logger.cli("++ Updating {}/{} ({})".format(category.name, local_ot.name, accessor))
+                        print(diff_str)
+                        code.update()
                 else:
                     logger.cli("-- No changes for {}/{} ({})".format(category.name, local_ot.name, accessor))
-        self._save()
+            self._save()
 
     def _get_operation_types_from_sever(self, category):
         return self._session_manager.current_session.OperationType.where({"category": category})
