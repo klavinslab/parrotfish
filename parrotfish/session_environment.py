@@ -40,12 +40,17 @@ class SessionEnvironment(ODir):
            |──.session_env.pkl              (pickled information about the AqSession it is managing)
            └──Category1                     (protocol category folder)
                |──OperationType1            (OperationType folder)
+               |   |──object_types
+               |   |   └──ObjectType1.json  (ObjectType used in OperationType)
+               |   |──sample_types
+               |   |   └──SampleType1.json  (SampleType used in OperationType)
+               |   |──testing
+               |   |   └──data.json         (data for testing)
                |   |──OperationType1.json   (data related to OperationType)
                |   |──OperationType1.rb                 (protocol code)
                |   |──OperationType1__cost_model.rb     (code model code)
                |   |──OperationType1__documentation.md  (documentation markdown)
-               |   |──OperationType1__precondition.rb   (precondition code)
-               |   └──test_data.json                    (data for testing)
+               |   └──OperationType1__precondition.rb   (precondition code)
                └──LibraryType1              (Library folder)
                    |──LibraryType1.rb                   (library code)
                    └──LibraryType1.json                 (data related to the Library)

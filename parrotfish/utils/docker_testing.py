@@ -154,7 +154,6 @@ def submit_plan(session, protocol, test_data):
     plan.create()
     plan.estimate_cost()
     plan.validate()
-    plan.show()
 
     plan.submit(session.current_user, session.current_user.budgets[0])
 
@@ -170,11 +169,10 @@ def submit_plan(session, protocol, test_data):
 
     # return result
     op.reload(session.Operation.find(op.id))
-    print('JOB STATUS: {}'.format(op.status))
 
     return {
         'success': op.status == 'done',
-        'errors': []
+        'plan_url': '{}launcher?plan_id={}'.format(session.url, plan.id)
     }
 
 

@@ -184,7 +184,8 @@ class CLI(object):
             # Stop container
             # self.stop_container()
 
-            logger.cli("Test results: {}".format(result))
+            logger.cli("Plan success: {}".format(result['success']))
+            logger.cli("View plan: {}".format(result['plan_url']))
         except Exception:
             self.unregister("docker")
             self.set_session(session_name)
