@@ -14,7 +14,7 @@ All `record`s are tagged for reference by other records described in the file. T
     "sample_types": [
       {
         "tag": "primer_st",
-        ...
+        "source": "sample_types/Primer.json"
       }
     ],
     "samples": [
@@ -29,7 +29,7 @@ All `record`s are tagged for reference by other records described in the file. T
       },
     ],
     ...
-  }
+  },
   ...
 }
 ```
@@ -94,14 +94,14 @@ Items and Samples are defined by a `tag` and `data`. This data takes the form of
       }
     ],
     ...
-  }
+  },
   ...
 }
 ```
 
 ### Object Types and Sample Types
 
-Object Types and Sample Types are defined similarly to Items and Samples but differ in that they are provided by the Operation Type definition and are less typically modified for testing purposes. Therefore, their `data` are housed in external files. This takes the following format:
+Object Types and Sample Types are defined similarly to Items and Samples but differ in that they are provided by the Operation Type definition and are less typically modified for testing purposes. Therefore, their `data` are housed in external files specified by `source`. This takes the following format:
 
 ```json
 {
@@ -127,7 +127,7 @@ Object Types and Sample Types are defined similarly to Items and Samples but dif
       }
     ],
     ...
-  }
+  },
   ...
 }
 ```
