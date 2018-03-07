@@ -101,6 +101,10 @@ Push code for current session and category:
 pfish push
 ```
 
+### Testing Operation Types
+
+Please consult the [Operation Type Testing documentation](./docs/operation_type_testing.md) for instructions on how to test Operation Types with Parrotfish.
+
 ## Setting up scripts
 
 A fetch script may look like
