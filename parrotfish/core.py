@@ -96,7 +96,7 @@ class CLI(object):
         for protocol in category.list_dirs():
             self.push_one(category.name, protocol.name)
 
-    def push_one(self, category_name, protocol_name):
+    def push_one(self, category_name, protocol_name, force=False):
         current_env = self._session_manager.current_env
         category = current_env.get_category_dir(category_name)
         protocol = current_env.get_protocol_dir(category_name, protocol_name)
@@ -116,7 +116,7 @@ class CLI(object):
                     # Local change, so fetch remote and compare
                     remote_ot = self._session_manager.current_session.OperationType.where({"category": category.name, "name": protocol.name})[0]
                     remote_code = getattr(remote_ot, accessor)
-                    if code.id != remote_code.id:
+                    if code.id != remote_code.id and force == False:
                         logger.cli(Fore.RED + "Local version of {}/{} ({}) out of date. Please fetch before pushing again: Push unsuccessful!".format(category.name, protocol.name, accessor))
                     else:
                         logger.cli("++ Updating {}/{} ({})".format(category.name, local_ot.name, accessor))
@@ -166,7 +166,6 @@ class CLI(object):
                 "http://localhost:3001",
                 "docker")
             self.set_session("docker")
-            # self.fetch(category_name)
 
             # Copy OT from last session to container session
             logger.cli(
@@ -174,15 +173,20 @@ class CLI(object):
             ot = session.OperationType.find_by_name(protocol_name)
             self._copy_operation_type(session_name, "docker", ot)
 
-            # Push OT from container session to container
-            logger.cli("Pushing protocol: {}".format(protocol_name))
-            self.push_one(category_name, protocol_name)
-
-            # Test protocol on container
+            # Load data to container
+            logger.cli("Loading test data into container")
             current_env = self._session_manager.current_env
             protocol = current_env.get_protocol_dir(category_name, protocol_name)
+            testing_data = docker_testing.load_data(protocol)
+
+            # Push OT from container session to container
+            logger.cli("Pushing protocol: {}".format(protocol_name))
+            current_env.write_operation_type(testing_data['ot'], True)
+            self.push_one(category_name, protocol_name, force=True)
+
+            # Test protocol on container
             logger.cli("Testing protocol: {}".format(protocol_name))
-            result = docker_testing.test_protocol(protocol)
+            result = docker_testing.test_protocol(protocol, testing_data)
 
             # Remove container session
             logger.cli("Unregistering Docker session")

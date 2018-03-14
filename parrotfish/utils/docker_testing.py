@@ -29,7 +29,17 @@ def get_records(session, protocol, records, record_names):
                 with protocol.open_file(record_info['source'], mode='r') as f:
                     data = j.load(f)
 
+            # Format data with tags
             new_data = format_data(data, record_dict)
+
+            if model_string == "operation_types":
+                for ft in new_data['field_types']:
+                    ft['allowable_field_types'] = [
+                        format_data(aft, record_dict)
+                        for aft in ft['allowable_field_types']
+                    ]
+
+            # Make records with Trident
             new_record = make_record(
                 session, protocol.name, model_string, new_data, record_dict)
 
@@ -54,7 +64,7 @@ def format_data(data, record_dict):
         tag = data[attr]
         if type(tag) is str and tag in record_dict:
             record_id = record_dict[tag].id
-            new_data[attr + '_id'] = record_id
+            new_data[attr[:-4] + '_id'] = record_id
         else:
             new_data[attr] = data[attr]
 
@@ -98,20 +108,33 @@ def make_record(session, name, model_string, data, record_dict):
         record = session.Item.load(data)
         record.make()
     elif model_name == "operation":
-        ot = session.OperationType.find_by_name(name)
+        ot = record_dict['ot']
         record = ot.instance()
         record.x = record.y = record.parent_id = record.parent = 0
 
         for in_data in data['inputs']:
             name = in_data['name']
-            sample = record_dict[in_data['sample']]
-            item = record_dict[in_data['item']]
+            sample = record_dict[in_data['sample_tag']]
+            item = record_dict[in_data['item_tag']]
             record.set_input(name, sample=sample, item=item)
 
         for out_data in data['outputs']:
             name = out_data['name']
-            sample = record_dict[out_data['sample']]
+            sample = record_dict[out_data['sample_tag']]
             record.set_output(name, sample=sample)
+    elif model_name == "operation_type":
+        # data['name'] = 'hullabaloo25'
+        record = session.OperationType.load(data)
+        try:
+            record.save()
+        except Exception:
+            # Trident errors even though Operation Type is successfully created
+            # TODO Handle creating Operation Types (and Field Types and
+            #      Allowable Field Types) more cleanly (e.g., many problems
+            #      arise from the fact that we can't 'reload' the OT record
+            #      upon creating it on a server; 'id's are incorrect).
+            record = session.OperationType.find_by_name(record.name)
+
     else:
         raise Exception(
             'Malformed data: {} is not a valid model name'.format(model_name))
@@ -119,7 +142,7 @@ def make_record(session, name, model_string, data, record_dict):
     return record
 
 
-def submit_plan(session, protocol, test_data):
+def test_protocol(protocol, record_dict):
     """
     Submits a plan to container given test data
 
@@ -127,21 +150,18 @@ def submit_plan(session, protocol, test_data):
     :type session: AqSession
     :param protocol: directory that manages the protocol
     :type protocol: ODir
-    :param test_data: data for all records to test on
-    :type test_data: dict
+    :param record_dict: dictionary of all records by tag
+    :type record_dict: dict
     :return: plan information (success status and errors)
     :rtype: dict
     """
-    # GET THOSE RECORDS
-    record_names = [
-        'sample_types',
-        'object_types',
-        'samples',
-        'items',
-        'operations'
-    ]
-    record_dict = get_records(
-        session, protocol, test_data['records'], record_names)
+    # GET THINE SESSION
+    session = record_dict['ot'].session
+
+    # READ THAT JSON
+    test_data = None
+    with protocol.open_file('testing/data.json', mode='r') as f:
+        test_data = j.load(f)
 
     # SUBMIT THAT PLAN
     plan = session.Plan.load({
@@ -176,27 +196,37 @@ def submit_plan(session, protocol, test_data):
     }
 
 
-def test_protocol(protocol):
+def load_data(protocol):
     """
-    Open a session with running container, and submit the plan with test data
+    Open a session with running container
 
     :param protocol: directory that manages the protocol
     :type protocol: ODir
-    :return: plan information (success status and errors)
+    :return: dictionary of all records by tag
     :rtype: dict
     """
     # OPEN A SESSION
     session = AqSession('neptune', 'aquarium', 'http://localhost:3001/')
 
     # READ THAT JSON
+    # protocol = environment.get_protocol_dir(cat_name, prot_name)
     test_data = None
     with protocol.open_file('testing/data.json', mode='r') as f:
         test_data = j.load(f)
 
-    # SUBMIT THAT PLAN
-    result = submit_plan(session, protocol, test_data)
+    # GET THOSE RECORDS
+    record_names = [
+        'sample_types',
+        'object_types',
+        'operation_types',
+        'samples',
+        'items',
+        'operations'
+    ]
+    record_dict = get_records(
+        session, protocol, test_data['records'], record_names)
 
-    return result
+    return record_dict
 
 
 def start_container(reset):

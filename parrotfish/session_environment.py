@@ -296,7 +296,7 @@ class SessionEnvironment(ODir):
 
         return lib_dir
 
-    def write_operation_type(self, operation_type):
+    def write_operation_type(self, operation_type, no_code=False):
         """
         Writes a :class:`OperationType` to the local machine
 
@@ -321,16 +321,17 @@ class SessionEnvironment(ODir):
                      }
         )
 
+        # write codes
+        if not no_code:
+            for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
+                logger.verbose("    saving {}".format(accessor))
+                ot_dir.get(accessor).write(metadata[accessor]['content'])
+
         # write metadata
         ot_dir.meta.dump_json(
             metadata,
             indent=4,
         )
-
-        # write codes
-        for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
-            logger.verbose("    saving {}".format(accessor))
-            ot_dir.get(accessor).write(metadata[accessor]['content'])
 
         # write sample types
         sample_type_dir = ot_dir.add('sample_types')

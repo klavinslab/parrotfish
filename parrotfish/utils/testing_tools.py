@@ -22,6 +22,14 @@ def generate_test_data(ot_dict):
     sample_types = _get_types('sample_type', ot_dict['field_types'])
     object_types = _get_types('object_type', ot_dict['field_types'])
 
+    # Link to Operation Type
+    operation_types = [
+        {
+            'tag': 'ot',
+            'source': '{}.json'.format(ot_dict['name'])
+        }
+    ]
+
     # Generate records from Field Types of op type
     samples = []
     items = []
@@ -50,7 +58,7 @@ def generate_test_data(ot_dict):
                 'data': {
                     'name': s_name,
                     'project': 'trident',
-                    'sample_type': st_tag,
+                    'sample_type_tag': st_tag,
                     'user_id': 1
                 }
             }
@@ -73,8 +81,8 @@ def generate_test_data(ot_dict):
                     i = {
                         'tag': i_tag,
                         'data': {
-                            'sample': s_tag,
-                            'object_type': ot_tag
+                            'sample_tag': s_tag,
+                            'object_type_tag': ot_tag
                         }
                     }
                     items.append(i)
@@ -83,13 +91,13 @@ def generate_test_data(ot_dict):
                 if role == 'input':
                     op_inputs.append({
                         'name': ft_name,
-                        'sample': s_tag,
-                        'item': i_tag
+                        'sample_tag': s_tag,
+                        'item_tag': i_tag
                     })
                 else:
                     op_outputs.append({
                         'name': ft_name,
-                        'sample': s_tag
+                        'sample_tag': s_tag
                     })
 
         # Operations
@@ -108,6 +116,7 @@ def generate_test_data(ot_dict):
         'records': {
             'object_types': object_types,
             'sample_types': sample_types,
+            'operation_types': operation_types,
             'samples': samples,
             'items': items,
             'operations': operations
