@@ -48,7 +48,7 @@ def generate_test_data(ot_dict):
     """
     Builds JSON-formatted string for testing data
 
-    :param ot_dict: an :class:`ObjectType` as a dictionary
+    :param ot_dict: an :class:`OperationType` as a dictionary
     :type ot_dict: dict
     :return: testing data
     :rtype: str
@@ -83,13 +83,19 @@ def generate_test_data(ot_dict):
         op_outputs = []
         for route in fts_by_route:
             # Sample Type
-            st_names = _names_from_fts('sample_type', ot_dict['field_types'])
-            st_tag = ('{}_st'.format(st_names[0].lower())
-                      if len(st_names) > 0 else None)
+            try:
+                afts = fts_by_route[route][0]['allowable_field_types']
+                st_tag = afts[0]['sample_type_tag']
+            except IndexError:
+                # Parameter input
+                st_tag = None
+            except KeyError:
+                # No Sample Type exists (like a gel box or collection)
+                st_tag = None
 
             # Sample
             s_tag = '{}_samp{}'.format(route, idx)
-            s_name = 'Test {} {}'.format(route, idx)
+            s_name = 'Test {} {} for {}'.format(route, idx, ot_dict['name'])
             s = {
                 'tag': s_tag,
                 'data': {
@@ -107,10 +113,11 @@ def generate_test_data(ot_dict):
                 role = ft['role']
 
                 # Object Type
-                ot_names = _names_from_fts(
-                    'object_type', ot_dict['field_types'])
-                ot_tag = ('{}_ot'.format(ot_names[0].lower())
-                          if len(ot_names) > 0 else None)
+                try:
+                    ot_tag = ft['allowable_field_types'][0]['object_type_tag']
+                except IndexError:
+                    # Parameter input
+                    st_tag = None
 
                 # Items
                 if role == 'input':
