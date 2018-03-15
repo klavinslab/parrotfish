@@ -672,10 +672,12 @@ class SessionManager(ODir):
                "  name={name}\n" \
                "  current_session={current}\n" \
                "  environment_location=\"{metadata}\"\n" \
-               "  session_directory=\"{dir}\")".format(
+               "  session_directory=\"{dir}\"\n" \
+               "  container_id=\"{container_id}\")".format(
             name=self.name,
             metadata=str(self.metadata.env_settings.abspath),
             current=self.current_session,
+            container_id=self.get_container_id(),
             dir=str(self.abspath)
         )
 
