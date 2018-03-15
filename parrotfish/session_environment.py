@@ -12,7 +12,7 @@ from opath import ODir
 from parrotfish.__version__ import __version__
 from parrotfish.utils import sanitize_filename, sanitize_attribute
 from parrotfish.utils.log import CustomLogging
-from parrotfish.utils.testing_tools import generate_test_data
+from parrotfish.utils.testing_tools import tagify, generate_test_data
 from pydent import AqSession
 from pydent.models import OperationType, Library
 
@@ -329,7 +329,7 @@ class SessionEnvironment(ODir):
 
         # write metadata
         ot_dir.meta.dump_json(
-            metadata,
+            tagify(metadata, self.aquarium_session),
             indent=4,
         )
 
@@ -372,10 +372,11 @@ class SessionEnvironment(ODir):
     def write_records_to_dir(self, target_dir, records):
         for rec in records:
             if rec:
-                file_name = self._sanitize_name(rec.name)
-                target_dir.add_file('{}.json'.format(file_name), attr=file_name)
-                target_dir.get(file_name).write(
-                    json.dumps(rec.dump(relations='field_types'), indent=2))
+                f_name = self._sanitize_name(rec.name)
+                target_dir.add_file('{}.json'.format(f_name), attr=f_name)
+                data = rec.dump(relations='field_types')
+                t_data = tagify(data, self.aquarium_session)
+                target_dir.get(f_name).write(json.dumps(t_data, indent=2))
 
     def read_operation_type(self, category, name):
         """

@@ -181,7 +181,7 @@ class CLI(object):
 
             # Push OT from container session to container
             logger.cli("Pushing protocol: {}".format(protocol_name))
-            current_env.write_operation_type(testing_data['ot'], True)
+            current_env.write_operation_type(testing_data['ot'], no_code=True)
             self.push_one(category_name, protocol_name, force=True)
 
             # Test protocol on container

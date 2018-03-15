@@ -7,6 +7,43 @@ import json
 from parrotfish.utils import sanitize_filename
 
 
+def tagify(data, session):
+    data = _tagify_single(data, session)
+
+    if ('field_types' in data and
+            data['field_types'][0]['parent_class'] == 'OperationType'):
+        fts = []
+        for ft in data['field_types']:
+            ft['allowable_field_types'] = [
+                _tagify_single(aft, session)
+                for aft in ft['allowable_field_types']
+            ]
+            fts.append(ft)
+        data['field_types'] = fts
+
+    return data
+
+
+def _tagify_single(data, session):
+    rec_types = [
+        ('sample_type', 'st'),
+        ('object_type', 'ot'),
+    ]
+    for rec_type in rec_types:
+        id_key = '{}_id'.format(rec_type[0])
+        tag_key = '{}_tag'.format(rec_type[0])
+        if id_key in data and data[id_key]:
+            rec = None
+            if rec_type[0] == 'sample_type':
+                rec = session.SampleType.find(data[id_key])
+            elif rec_type[0] == 'object_type':
+                rec = session.ObjectType.find(data[id_key])
+            data[tag_key] = '{}_{}'.format(rec.name.lower(), rec_type[1])
+            data.pop(id_key)
+
+    return data
+
+
 def generate_test_data(ot_dict):
     """
     Builds JSON-formatted string for testing data
