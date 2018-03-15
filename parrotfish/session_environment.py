@@ -593,7 +593,8 @@ class SessionManager(ODir):
                 'current': self._curr_session_name,
                 "updated_at": str(datetime.datetime.now()),
                 "version": __version__,
-                "encryption_key": encryption_key
+                "encryption_key": encryption_key,
+                "container_id": self.get_container_id()
             },
             indent=4)
         self.save_environments()
@@ -650,6 +651,21 @@ class SessionManager(ODir):
                 self._add_session_env(session_env)
         self.set_current(meta['current'])
         return self
+
+    def get_container_id(self):
+        try:
+            with self.metadata.env_settings.open(mode='r') as f:
+                settings = json.load(f)
+                return settings.get('container_id', '')
+        except FileNotFoundError:
+            return 0
+
+    def set_container_id(self, cid):
+        with self.metadata.env_settings.open(mode='r') as f:
+            settings = json.load(f)
+            settings['container_id'] = cid
+            self.metadata.env_settings.write(json.dumps(settings), 'w')
+
 
     def __str__(self):
         return "SessionManager(\n" \

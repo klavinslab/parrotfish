@@ -13,7 +13,6 @@ if [ $1 = 'run' ]; then
   sudo docker kill $(sudo docker ps -a -q --filter="ancestor=aq")
 
   # Start Aquarium Docker container
-  echo "Starting aquarium container..."
   sudo docker run --rm -tp 3001:3000 aq >> /tmp/aq-log.txt &
 
   # Wait for container to start
@@ -21,9 +20,12 @@ if [ $1 = 'run' ]; then
   while ! grep -m1 'INFO  WEBrick::HTTPServer#start:' < /tmp/aq-log.txt; do
     sleep 1
   done
-  echo 'Aquarium container started!'
+  CID=$(sudo docker ps --latest --quiet)
+  echo $CID
+
 elif [ $1 = 'kill' ]; then
   echo "Killing running container..."
-  sudo docker kill $(sudo docker ps -a -q --filter="ancestor=aq")
+  sudo docker kill $2
+  #sudo docker kill $(sudo docker ps -a -q --filter="ancestor=aq")
 fi
 

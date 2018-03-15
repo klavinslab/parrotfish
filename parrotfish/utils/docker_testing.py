@@ -229,7 +229,7 @@ def load_data(protocol):
     return record_dict
 
 
-def start_container(reset):
+def start_container(reset, cid):
     """
     Start a Docker container
 
@@ -239,21 +239,39 @@ def start_container(reset):
     :rtype: bool
     """
     # RUN THIS DOCKER CONTAINER
-    command = 'sudo docker ps -aqf ancestor=aq'
-    check_running = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
-    output, error = check_running.communicate()
-    running = len(output) > 0
+    # command = 'sudo docker ps -aqf ancestor=aq'
+    # check_running = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
+    # output, error = check_running.communicate()
+    # running = len(output) > 0
+    running = cid != ''
 
     if reset or not running:
+        print('Starting Aquarium container...')
         here = os.path.abspath(os.path.dirname(__file__))
-        subprocess.call(['bash', '{}/docker_container.sh'.format(here), 'run'])
-        return True
+        start = subprocess.Popen([
+            'bash',
+            '{}/docker_container.sh'.format(here),
+            'run',
+            str(cid)
+        ], stdout=subprocess.PIPE)
+        output, error = start.communicate()
+        cid = output.split(b'\n')[-2].decode('utf-8')
 
-    return False
+        return {
+            'success': True,
+            'id': cid
+        }
+
+    return {'success': False}
 
 
-def stop_container():
+def stop_container(cid):
     """ Stop a Docker container """
     # KILL THIS DOCKER CONTAINER
     here = os.path.abspath(os.path.dirname(__file__))
-    subprocess.call(['bash', '{}/docker_container.sh'.format(here), 'kill'])
+    subprocess.call([
+        'bash',
+        '{}/docker_container.sh'.format(here),
+        'kill',
+        cid,
+    ])

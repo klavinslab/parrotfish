@@ -205,15 +205,24 @@ class CLI(object):
 
     def start_container(self, reset=False):
         """Start an Aqarium Docker container"""
-        if docker_testing.start_container(reset):
+        container_id = self._session_manager.get_container_id()
+        result = docker_testing.start_container(reset, container_id)
+
+        if result['success']:
+            self._session_manager.set_container_id(result['id'])
             logger.cli("Container started!")
         else:
             logger.cli("Container already running: use --reset to restart")
 
     def stop_container(self):
         """Stop an Aqarium Docker container"""
-        docker_testing.stop_container()
-        logger.cli("Container killed")
+        container_id = self._session_manager.get_container_id()
+        if container_id != '':
+            docker_testing.stop_container(container_id)
+            self._session_manager.set_container_id('')
+            logger.cli("Container killed")
+        else:
+            logger.cli("No container is currently running")
 
     def _copy_operation_type(self, sess1_name, sess2_name, ot):
         """Copy Operation Type files from one session to another"""
