@@ -238,14 +238,22 @@ def start_container(reset, cid):
     :return: whether a new container was started
     :rtype: bool
     """
-    # RUN THIS DOCKER CONTAINER
-    # command = 'sudo docker ps -aqf ancestor=aq'
-    # check_running = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
-    # output, error = check_running.communicate()
-    # running = len(output) > 0
-    running = cid != ''
+    # CHECK IF DOCKER CONTAINER IS RUNNING ALREADY
+    if cid == '':
+        running = False
+    else:
+        command = 'sudo docker ps -aq'
+        check_running = subprocess.Popen(
+            command.split(), stdout=subprocess.PIPE)
+        output, error = check_running.communicate()
+        running_ids = [rid.decode('utf-8') for rid in output.split(b'\n')]
+
+        running = cid in running_ids
+        if not running:
+            cid = ''
 
     if reset or not running:
+        # RUN THIS DOCKER CONTAINER
         print('Starting Aquarium container...')
         here = os.path.abspath(os.path.dirname(__file__))
         start = subprocess.Popen([
@@ -262,7 +270,10 @@ def start_container(reset, cid):
             'id': cid
         }
 
-    return {'success': False}
+    return {
+        'success': False,
+        'id': cid
+    }
 
 
 def stop_container(cid):

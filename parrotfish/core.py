@@ -193,9 +193,6 @@ class CLI(object):
             self.unregister("docker")
             self.set_session(session_name)
 
-            # Stop container
-            # self.stop_container()
-
             logger.cli("Plan success: {}".format(result['success']))
             logger.cli("View plan: {}".format(result['plan_url']))
         except Exception:
@@ -209,10 +206,10 @@ class CLI(object):
         result = docker_testing.start_container(reset, container_id)
 
         if result['success']:
-            self._session_manager.set_container_id(result['id'])
             logger.cli("Container started!")
         else:
             logger.cli("Container already running: use --reset to restart")
+        self._session_manager.set_container_id(result['id'])
 
     def stop_container(self):
         """Stop an Aqarium Docker container"""
