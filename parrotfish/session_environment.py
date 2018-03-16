@@ -658,7 +658,7 @@ class SessionManager(ODir):
                 settings = json.load(f)
                 return settings.get('container_id', '')
         except FileNotFoundError:
-            return 0
+            return ''
 
     def set_container_id(self, cid):
         with self.metadata.env_settings.open(mode='r') as f:
