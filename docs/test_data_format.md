@@ -1,12 +1,15 @@
 # Test Data Format
 
-Every time you `pfish fetch <category>` Parrotfish generates an `<operation_type>/testing/data.json` file that will be loaded into the Aquarium container when you test an Operation Type. The data represented in this file should encompass *all* of the database records involved in the given Operation Type, including Items, Samples, Sample Types, Operations, etc. Parrotfish generates data for three operations by default.
+Every time you `pfish fetch <category>` Parrotfish generates an `<operation_type>/testing/data.json` file that will be loaded into the Aquarium container when you test an Operation Type.
+The data represented in this file should encompass _all_ of the database records involved in the given `OperationType`, including `Item`s, `Sample`s, `SampleType`s, `Operation`s, etc. Parrotfish generates data for three operations by default.
 
-The following outline of the file structure uses Rehydrate Primer as an example.
+The following outline of the file structure uses _Rehydrate Primer_ as an example.
 
 ## Records
 
-All `record`s are tagged for reference by other records described in the file. These tags are used to establish relationships between records and are replaced with ids of the tagged record as the records are loaded into the Aquarium container. An example Sample Type and Sample definition:
+All `record`s are tagged for reference by other records described in the file.
+These tags are used to establish relationships between records and are replaced with ids of the tagged record as the records are loaded into the Aquarium container.
+An example `SampleType` and `Sample` definition:
 
 ```json
 {
@@ -36,7 +39,12 @@ All `record`s are tagged for reference by other records described in the file. T
 
 ### Items and Samples
 
-Items and Samples are defined by a `tag` and `data`. This data takes the form of the argument for [`Model.load()` in Trident](https://github.com/klavinslab/trident/blob/master/docsrc/developer/api_notes.rst#working-with-models) with one exception: Any field that Trident expects to end with `_id` that points to a `tag` instead of to an integer will be replaced with the field name with `_id` appended, pointing to the id of the newly-created record. An example follows:
+Items and Samples are defined by a `tag` and `data`.
+This data takes the form of the argument for
+[`Model.load()` in Trident](https://github.com/klavinslab/trident/blob/master/docsrc/developer/api_notes.rst#working-with-models)
+with one exception:
+Any field that Trident expects to end with `_id` that points to a `tag` instead of to an integer will be replaced with the field name with `_id` appended, pointing to the id of the newly-created record.
+An example follows:
 
 ```json
 {
@@ -101,7 +109,8 @@ Items and Samples are defined by a `tag` and `data`. This data takes the form of
 
 ### Object Types and Sample Types
 
-Object Types and Sample Types are defined similarly to Items and Samples but differ in that they are provided by the Operation Type definition and are less typically modified for testing purposes. Therefore, their `data` are housed in external files specified by `source`. This takes the following format:
+Object Types and Sample Types are defined similarly to Items and Samples but differ in that they are provided by the Operation Type definition and are less typically modified for testing purposes.
+Therefore, their `data` are housed in external files specified by `source`. This takes the following format:
 
 ```json
 {
@@ -134,7 +143,9 @@ Object Types and Sample Types are defined similarly to Items and Samples but dif
 
 ### Operations
 
-Operations are defined similarly to Items and Samples with the exception that their `data` encompasses further definitions for its inputs and outputs. As this file is parsed, first the Operation is created, and then its inputs and outputs are created, where each `input` and `output` element takes the form of `data` expected by Trident. An example follows:
+Operations are defined similarly to Items and Samples with the exception that their `data` encompasses further definitions for its inputs and outputs.
+As this file is parsed, first the Operation is created, and then its inputs and outputs are created, where each `input` and `output` element takes the form of `data` expected by Trident.
+An example follows:
 
 ```json
 {
@@ -215,7 +226,8 @@ Operations are defined similarly to Items and Samples with the exception that th
 
 ## Plan
 
-A single plan is generated for the test, and it is simply defined in this file by a list of tags of the operations to be created for this plan. An example follows:
+A single plan is generated for the test, and it is simply defined in this file by a list of tags of the operations to be created for this plan.
+An example follows:
 
 ```json
 {
