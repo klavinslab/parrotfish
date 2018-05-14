@@ -6,10 +6,13 @@ import os
 import tempfile
 from pathlib import Path
 
+from opath.utils import rmtree, copytree
+
 import fire
 from cryptography.fernet import Fernet
+from colorama import Fore
 from parrotfish.session_environment import SessionManager
-from parrotfish.utils import CustomLogging, format_json, compare_content
+from parrotfish.utils import CustomLogging, docker_testing, format_json, compare_content
 from requests.exceptions import InvalidSchema
 
 logger = CustomLogging.get_logger(__name__)
@@ -92,24 +95,37 @@ class CLI(object):
         current_env = self._session_manager.current_env
         category = current_env.get_category_dir(category_name)
         for protocol in category.list_dirs():
-            if protocol.has("source"):
-                # then its a Library
-                local_lib = current_env.read_library_type(category.name, protocol.name)
-                local_lib.code("source").update()
-            if protocol.has("protocol"):
-                # then its an OperationType
-                local_ot = current_env.read_operation_type(category.name, protocol.name)
-                for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
-                    code = getattr(local_ot, accessor)
-                    server_code = local_ot.code(accessor)
-                    diff_str = compare_content(server_code.content, code.content).strip()
-                    if diff_str != '':
+            self.push_one(category.name, protocol.name)
+
+    def push_one(self, category_name, protocol_name, force=False):
+        current_env = self._session_manager.current_env
+        category = current_env.get_category_dir(category_name)
+        protocol = current_env.get_protocol_dir(category_name, protocol_name)
+        if protocol.has("source"):
+            # then its a Library
+            local_lib = current_env.read_library_type(category.name, protocol.name)
+            local_lib.code("source").update()
+        if protocol.has("protocol"):
+            # then its an OperationType
+            local_ot = current_env.read_operation_type(category.name, protocol.name)
+            for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
+                code = getattr(local_ot, accessor)
+                server_code = local_ot.code(accessor)
+
+                diff_str = compare_content(server_code.content, code.content).strip()
+                if diff_str != '':
+                    # Local change, so fetch remote and compare
+                    remote_ot = self._session_manager.current_session.OperationType.where({"category": category.name, "name": protocol.name})[0]
+                    remote_code = getattr(remote_ot, accessor)
+                    if code.id != remote_code.id and force == False:
+                        logger.cli(Fore.RED + "Local version of {}/{} ({}) out of date. Please fetch before pushing again: Push unsuccessful!".format(category.name, protocol.name, accessor))
+                    else:
                         logger.cli("++ Updating {}/{} ({})".format(category.name, local_ot.name, accessor))
                         print(diff_str)
                         code.update()
-                    else:
-                        logger.cli("-- No changes for {}/{} ({})".format(category.name, local_ot.name, accessor))
-        self._save()
+                else:
+                    logger.cli("-- No changes for {}/{} ({})".format(category.name, local_ot.name, accessor))
+            self._save()
 
     def _get_operation_types_from_sever(self, category):
         return self._session_manager.current_session.OperationType.where({"category": category})
@@ -133,6 +149,90 @@ class CLI(object):
             curr_env = self._session_manager.current_env
             curr_env.write_library(lib)
         self._save()
+
+    def test(self, category_name, protocol_name, reset=False):
+        """ Test a single protocol on an Aquarium Docker container """
+        session = self._session_manager.current_session
+        session_name = session.name
+
+        try:
+            # Start container
+            self.start_container(reset)
+
+            # Init container session
+            logger.cli("Setting Docker session")
+            self.register(
+                "neptune",
+                "aquarium",
+                "http://localhost:3001",
+                "docker")
+            self.set_session("docker")
+
+            # Copy OT from last session to container session
+            logger.cli(
+                "Copying protocol from {} to docker session".format(session_name))
+            ot = session.OperationType.find_by_name(protocol_name)
+            self._copy_operation_type(session_name, "docker", ot)
+
+            # Load data to container
+            logger.cli("Loading test data into container")
+            current_env = self._session_manager.current_env
+            protocol = current_env.get_protocol_dir(category_name, protocol_name)
+            testing_data = docker_testing.load_data(protocol)
+
+            # Push OT from container session to container
+            logger.cli("Pushing protocol: {}".format(protocol_name))
+            current_env.write_operation_type(testing_data['ot'], no_code=True)
+            self.push_one(category_name, protocol_name, force=True)
+
+            # Test protocol on container
+            logger.cli("Testing protocol: {}".format(protocol_name))
+            result = docker_testing.test_protocol(protocol, testing_data)
+
+            # Remove container session
+            logger.cli("Unregistering Docker session")
+            self.unregister("docker")
+            self.set_session(session_name)
+
+            logger.cli("Plan success: {}".format(result['success']))
+            logger.cli("View plan: {}".format(result['plan_url']))
+        except Exception:
+            self.unregister("docker")
+            self.set_session(session_name)
+            raise
+
+    def start_container(self, reset=False):
+        """Start an Aqarium Docker container"""
+        container_id = self._session_manager.get_container_id()
+        result = docker_testing.start_container(reset, container_id)
+
+        if result['success']:
+            logger.cli("Container started!")
+        else:
+            logger.cli("Container already running: use --reset to restart")
+        self._session_manager.set_container_id(result['id'])
+
+    def stop_container(self):
+        """Stop an Aqarium Docker container"""
+        container_id = self._session_manager.get_container_id()
+        if container_id != '':
+            docker_testing.stop_container(container_id)
+            self._session_manager.set_container_id('')
+            logger.cli("Container killed")
+        else:
+            logger.cli("No container is currently running")
+
+    def _copy_operation_type(self, sess1_name, sess2_name, ot):
+        """Copy Operation Type files from one session to another"""
+        sess1 = self._session_manager.get(sess1_name)
+        sess2 = self._session_manager.get(sess2_name)
+
+        # Copy all files from current_session to docker
+        rmtree(sess2.abspath)
+        copytree(sess1.abspath, sess2.abspath)
+
+        # Make this operation type visible to ODir
+        sess2.get_operation_type_dir(ot.category, ot.name)
 
     @property
     def _sessions(self):

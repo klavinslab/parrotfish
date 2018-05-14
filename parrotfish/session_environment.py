@@ -5,12 +5,14 @@ Classes for managing Aquarium sessions and protocols
 import datetime
 import os
 from glob import glob
+import json
 
 import dill
 from opath import ODir
 from parrotfish.__version__ import __version__
 from parrotfish.utils import sanitize_filename, sanitize_attribute
 from parrotfish.utils.log import CustomLogging
+from parrotfish.utils.testing_tools import tagify, generate_test_data
 from pydent import AqSession
 from pydent.models import OperationType, Library
 
@@ -38,6 +40,12 @@ class SessionEnvironment(ODir):
            |──.session_env.pkl              (pickled information about the AqSession it is managing)
            └──Category1                     (protocol category folder)
                |──OperationType1            (OperationType folder)
+               |   |──object_types
+               |   |   └──ObjectType1.json  (ObjectType used in OperationType)
+               |   |──sample_types
+               |   |   └──SampleType1.json  (SampleType used in OperationType)
+               |   |──testing
+               |   |   └──data.json         (data for testing)
                |   |──OperationType1.json   (data related to OperationType)
                |   |──OperationType1.rb                 (protocol code)
                |   |──OperationType1__cost_model.rb     (code model code)
@@ -256,7 +264,17 @@ class SessionEnvironment(ODir):
         ot_dir.add_file('{}__cost_model.rb'.format(basename), attr='cost_model')
         ot_dir.add_file('{}__documentation.md'.format(basename), attr='documentation')
 
+        ot_dir.add('object_types')
+        ot_dir.add('sample_types')
+        ot_dir.add('testing')
+
         return ot_dir
+
+    def get_test_dir(ot_dir):
+        test_dir = ot_dir.add('Testing')
+        test_dir.add_file('data.json', attr='data')
+
+        return test_dir
 
     def get_library_type_dir(self, category, library_name):
         """
@@ -278,7 +296,7 @@ class SessionEnvironment(ODir):
 
         return lib_dir
 
-    def write_operation_type(self, operation_type):
+    def write_operation_type(self, operation_type, no_code=False):
         """
         Writes a :class:`OperationType` to the local machine
 
@@ -289,29 +307,50 @@ class SessionEnvironment(ODir):
         """
         ot_dir = self.get_operation_type_dir(operation_type.category, operation_type.name)
 
-        include = {
-            'field_types': 'allowable_field_types'
-        }
-
         metadata = operation_type.dump(
             include={'protocol': {},
                      'documentation': {},
                      'cost_model': {},
                      'precondition': {},
-                     "field_types": "allowable_field_types"
+                     "field_types": {
+                         "allowable_field_types": {
+                             "sample_type",
+                             "object_type"
+                         }
+                     }
                      }
         )
 
+        # write codes
+        if not no_code:
+            for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
+                logger.verbose("    saving {}".format(accessor))
+                ot_dir.get(accessor).write(metadata[accessor]['content'])
+
         # write metadata
         ot_dir.meta.dump_json(
-            metadata,
+            tagify(metadata, self.aquarium_session),
             indent=4,
         )
 
-        # write codes
-        for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
-            logger.verbose("    saving {}".format(accessor))
-            ot_dir.get(accessor).write(metadata[accessor]['content'])
+        # write sample types
+        sample_type_dir = ot_dir.add('sample_types')
+        sample_types = [aft.sample_type
+                        for ft in operation_type.field_types
+                        for aft in ft.allowable_field_types]
+        self.write_records_to_dir(sample_type_dir, sample_types)
+
+        # write object types
+        object_type_dir = ot_dir.add('object_types')
+        object_types = [aft.object_type
+                        for ft in operation_type.field_types
+                        for aft in ft.allowable_field_types]
+        self.write_records_to_dir(object_type_dir, object_types)
+
+        # write test data
+        testing_dir = ot_dir.add('testing')
+        testing_dir.add_file('data.json', attr='data')
+        testing_dir.get('data').write(generate_test_data(metadata))
 
     def write_library(self, library):
         """
@@ -329,6 +368,15 @@ class SessionEnvironment(ODir):
 
         # write codes
         lib_dir.source.write(library.code('source').content)
+
+    def write_records_to_dir(self, target_dir, records):
+        for rec in records:
+            if rec:
+                f_name = self._sanitize_name(rec.name)
+                target_dir.add_file('{}.json'.format(f_name), attr=f_name)
+                data = rec.dump(relations='field_types')
+                t_data = tagify(data, self.aquarium_session)
+                target_dir.get(f_name).write(json.dumps(t_data, indent=2))
 
     def read_operation_type(self, category, name):
         """
@@ -400,7 +448,8 @@ class SessionManager(ODir):
         |       |   |   |──OperationType1.rb
         |       |   |   |──OperationType1__cost_model.rb
         |       |   |   |──OperationType1__documentation.rb
-        |       |   |   └──OperationType1__precondition.rb
+        |       |   |   |──OperationType1__precondition.rb
+        |       |   |   └──test_data.rb
         |       |   └──LibraryType1
         |       |       |──LibraryType1.rb
         |       |       └──LibraryType1.json
@@ -544,7 +593,8 @@ class SessionManager(ODir):
                 'current': self._curr_session_name,
                 "updated_at": str(datetime.datetime.now()),
                 "version": __version__,
-                "encryption_key": encryption_key
+                "encryption_key": encryption_key,
+                "container_id": self.get_container_id()
             },
             indent=4)
         self.save_environments()
@@ -602,15 +652,32 @@ class SessionManager(ODir):
         self.set_current(meta['current'])
         return self
 
+    def get_container_id(self):
+        try:
+            with self.metadata.env_settings.open(mode='r') as f:
+                settings = json.load(f)
+                return settings.get('container_id', '')
+        except FileNotFoundError:
+            return ''
+
+    def set_container_id(self, cid):
+        with self.metadata.env_settings.open(mode='r') as f:
+            settings = json.load(f)
+            settings['container_id'] = cid
+            self.metadata.env_settings.write(json.dumps(settings), 'w')
+
+
     def __str__(self):
         return "SessionManager(\n" \
                "  name={name}\n" \
                "  current_session={current}\n" \
                "  environment_location=\"{metadata}\"\n" \
-               "  session_directory=\"{dir}\")".format(
+               "  session_directory=\"{dir}\"\n" \
+               "  container_id=\"{container_id}\")".format(
             name=self.name,
             metadata=str(self.metadata.env_settings.abspath),
             current=self.current_session,
+            container_id=self.get_container_id(),
             dir=str(self.abspath)
         )
 

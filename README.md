@@ -5,10 +5,11 @@
 ![module_icon](images/module_icon.png?raw=true)
 
 #### Build/Coverage Status
-Branch | Build | Coverage
-:---: | :---: | :---:
-**master** | [![travis build](https://img.shields.io/travis/klavinslab/parrotfish/master.svg)](https://travis-ci.org/klavinslab/parrotfish/master) | [![Coverage Status](https://coveralls.io/repos/github/klavinslab/parrotfish/badge.svg?branch=master)](https://coveralls.io/github/klavinslab/parrotfish?branch=master)
-**development** | [![travis build](https://img.shields.io/travis/klavinslab/parrotfish/development.svg)](https://travis-ci.org/klavinslab/parrotfish/development) | [![Coverage Status](https://coveralls.io/repos/github/klavinslab/parrotfish/badge.svg?branch=development)](https://coveralls.io/github/klavinslab/parrotfish?branch=development)
+
+|     Branch      |                                                                      Build                                                                      |                                                                                     Coverage                                                                                     |
+| :-------------: | :---------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+|   **master**    |      [![travis build](https://img.shields.io/travis/klavinslab/parrotfish/master.svg)](https://travis-ci.org/klavinslab/parrotfish/master)      |      [![Coverage Status](https://coveralls.io/repos/github/klavinslab/parrotfish/badge.svg?branch=master)](https://coveralls.io/github/klavinslab/parrotfish?branch=master)      |
+| **development** | [![travis build](https://img.shields.io/travis/klavinslab/parrotfish/development.svg)](https://travis-ci.org/klavinslab/parrotfish/development) | [![Coverage Status](https://coveralls.io/repos/github/klavinslab/parrotfish/badge.svg?branch=development)](https://coveralls.io/github/klavinslab/parrotfish?branch=development) |
 
 # **parrotfish**
 
@@ -26,10 +27,10 @@ Note that this version requires the new version of Trident that utilizes Pillowt
 ### Requirements
 
 * install this version of [trident](https://github.com/klavinslab/trident/tree/feature-pillowtalk-apiwrapper)
-    * cd to trident directory
-    * run `pip install .`
-```
+  * cd to trident directory
+  * run `pip install .`
 
+```
 cd to/directory/parrotfish
 pip install parrotfish
 ```
@@ -100,6 +101,10 @@ Push code for current session and category:
 ```bash
 pfish push
 ```
+
+### Testing Operation Types
+
+Please consult the [Operation Type Testing documentation](./docs/operation_type_testing.md) for instructions on how to test Operation Types with Parrotfish.
 
 ## Setting up scripts
 

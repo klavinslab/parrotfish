@@ -1,0 +1,74 @@
+{
+  "records":{
+    "samples":[
+      {
+        "tag":"samp1",
+        "data":{
+          "name":"Test Primer",
+          "project":"trident",
+          "sample_type_id":21,
+          "user_id":1
+        }
+      }
+    ],
+
+    "items":[
+      {
+        "tag":"item1",
+        "data":{
+          "sample":"samp1",
+          "object_type_id":608
+        }
+      }
+    ],
+
+    "operations":[
+      {
+        "tag":"op1",
+        "data":{
+          "inputs":[
+            {
+              "name":"Primer",
+              "sample":"samp1",
+              "item":"item1"
+            }
+          ],
+          "outputs":[
+            {
+              "name":"Primer Aliquot",
+              "sample":"samp1"
+            }, {
+              "name":"Primer Stock",
+              "sample":"samp1"
+            }
+          ]
+        }
+      }, {
+        "tag":"op2",
+        "data":{
+          "inputs":[
+            {
+              "name":"Primer",
+              "sample":"samp1",
+              "item":"item1"
+            }
+          ],
+          "outputs":[
+            {
+              "name":"Primer Aliquot",
+              "sample":"samp1"
+            }, {
+              "name":"Primer Stock",
+              "sample":"samp1"
+            }
+          ]
+        }
+      }
+    ]
+  },
+
+  "plan":{
+    "operations":["op1", "op2"]
+  }
+}
+
