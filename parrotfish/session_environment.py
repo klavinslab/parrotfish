@@ -24,20 +24,20 @@ from cryptography.fernet import Fernet, InvalidToken
 
 class SessionEnvironment(ODir):
     """
-    Manages protocols (:class:`OperationType` & :class:`Library`) for a single Aquarium
-    session.
+    Manages protocols (:class:`OperationType` & :class:`Library`) for a single 
+    Aquarium session.
 
     Features:
         * **fetch** protocols from an Aquarium server and write them to
     the local machine.
         * **push** protocols from the local machine to the Aquarium server
 
-    Directory structure details: Each managed session will contain a directory for each
-    :class:`OperationType` or :class:`Library` folder it is managing. The directory structure
-    for a managed session looks like the following::
+    Directory structure details: Each managed session will contain a directory
+    for each :class:`OperationType` or :class:`Library` folder it is managing.
+    The directory structure for a managed session looks like the following::
 
         SessionEnvironment1
-           |──.session_env.pkl              (pickled information about the AqSession it is managing)
+           |──.session_env.pkl              (pickled environment information)
            └──Category1                     (protocol category folder)
                |──OperationType1            (OperationType folder)
                |   |──object_types
@@ -49,7 +49,7 @@ class SessionEnvironment(ODir):
                |   |──OperationType1.json   (data related to OperationType)
                |   |──OperationType1.rb                 (protocol code)
                |   |──OperationType1__cost_model.rb     (code model code)
-               |   |──OperationType1__documentation.md  (documentation markdown)
+               |   |──OperationType1__documentation.md  (documentation)
                |   └──OperationType1__precondition.rb   (precondition code)
                └──LibraryType1              (Library folder)
                    |──LibraryType1.rb                   (library code)
@@ -64,7 +64,8 @@ class SessionEnvironment(ODir):
     string. This string can be decrypted using the proper key.
     """
 
-    ENV_PKL = '.session_environment.pkl'  # name of the pickled file when saving or loading
+    # name of the pickled file when saving or loading
+    ENV_PKL = '.session_environment.pkl'
 
     def __init__(self, name, login, password, aquarium_url, encryption_key):
         """
@@ -99,8 +100,10 @@ class SessionEnvironment(ODir):
         self.add('protocols')
 
     def create_session(self, encryption_key):
-        """Creates a new :class:`AqSession` instance using the login, aquarium_url, and encrypted
-        password information stored. The encryption_key is used to decrypt a the password.
+        """
+        Creates a new :class:`AqSession` instance using the login,
+        aquarium_url, and encrypted password information stored.
+        The encryption_key is used to decrypt the password.
 
         :param encryption_key: Fernet key to decrypt the password
         :type encryption_key: str
@@ -111,14 +114,17 @@ class SessionEnvironment(ODir):
         aqsession = None
         try:
             aqsession = AqSession(self.login,
-                                  cipher_suite.decrypt(self.encrypted_password).decode(),
+                                  cipher_suite.decrypt(
+                                      self.encrypted_password).decode(),
                                   self.aquarium_url,
                                   name=self.name)
         except InvalidToken:
             logger.warning(self.encrypted_password)
-            logger.warning("Encryption key mismatch! Cannot create session. Use 'pfish generate-encryption-key' to generate"
-                           "a new key. Alternatively, use 'pfish set-encryption-key [YOURKEY]' if you have a pre-generated"
-                           "key")
+            logger.warning("Encryption key mismatch! Cannot create session. "
+                           "Use 'pfish generate-encryption-key' to generate"
+                           "a new key. Alternatively, use "
+                           "'pfish set-encryption-key [YOURKEY]' if you have "
+                           "a pre-generated key")
         self.aquarium_session = aqsession
         return aqsession
 
@@ -154,7 +160,8 @@ class SessionEnvironment(ODir):
         """
         old_cipher = Fernet(old_key)
         new_cipher = Fernet(new_key)
-        self.encrypted_password = new_cipher.encrypt(old_cipher.decrypt(self.encrypted_password))
+        self.encrypted_password = new_cipher.encrypt(
+            old_cipher.decrypt(self.encrypted_password))
 
     # def reload_from_pkl(self, encryption_key):
     #     """Load attributes from the pickle"""
@@ -205,7 +212,8 @@ class SessionEnvironment(ODir):
         """
         cat_name = self._sanitize_name(cat_name)
         if not self.protocols.has(cat_name):
-            raise FileNotFoundError("Category \"{}\" not found".format(cat_name))
+            raise FileNotFoundError(
+                "Category \"{}\" not found".format(cat_name))
         return self.protocols.get(cat_name)
 
     def get_protocol_dir(self, cat_name, protocol_name):
@@ -222,7 +230,8 @@ class SessionEnvironment(ODir):
         cat = self.get_category_dir(cat_name)
         protocol_name = self._sanitize_name(protocol_name)
         if not cat.has(protocol_name):
-            raise FileNotFoundError("Protocol \"{}/{}\" not found".format(cat_name, protocol_name))
+            raise FileNotFoundError(
+                "Protocol \"{}/{}\" not found".format(cat_name, protocol_name))
         return cat.get(protocol_name)
 
     @property
@@ -260,9 +269,12 @@ class SessionEnvironment(ODir):
         # add operation type files
         ot_dir.add_file('{}.json'.format(basename), attr='meta')
         ot_dir.add_file('{}.rb'.format(basename), attr='protocol')
-        ot_dir.add_file('{}__precondition.rb'.format(basename), attr='precondition')
-        ot_dir.add_file('{}__cost_model.rb'.format(basename), attr='cost_model')
-        ot_dir.add_file('{}__documentation.md'.format(basename), attr='documentation')
+        ot_dir.add_file('{}__precondition.rb'.format(
+            basename), attr='precondition')
+        ot_dir.add_file('{}__cost_model.rb'.format(
+            basename), attr='cost_model')
+        ot_dir.add_file('{}__documentation.md'.format(
+            basename), attr='documentation')
 
         ot_dir.add('object_types')
         ot_dir.add('sample_types')
@@ -270,6 +282,7 @@ class SessionEnvironment(ODir):
 
         return ot_dir
 
+    @staticmethod
     def get_test_dir(ot_dir):
         test_dir = ot_dir.add('Testing')
         test_dir.add_file('data.json', attr='data')
@@ -305,7 +318,8 @@ class SessionEnvironment(ODir):
         :return: None
         :rtype: None
         """
-        ot_dir = self.get_operation_type_dir(operation_type.category, operation_type.name)
+        ot_dir = self.get_operation_type_dir(
+            operation_type.category, operation_type.name)
 
         metadata = operation_type.dump(
             include={'protocol': {},
@@ -317,8 +331,8 @@ class SessionEnvironment(ODir):
                              "sample_type",
                              "object_type"
                          }
-                     }
-                     }
+            }
+            }
         )
 
         # write codes
@@ -458,7 +472,6 @@ class SessionManager(ODir):
             └── ...
     """
 
-
     DEFAULT_METADATA_LOC = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), 'environment_data')
     DEFAULT_METADATA_NAME = 'environment_settings.json'
@@ -497,7 +510,8 @@ class SessionManager(ODir):
             logger.warning("'{}' already exists!".format(name))
             return
         key = str.encode(self.__meta['encryption_key'])
-        session_env = SessionEnvironment(name, login, password, aquarium_url, key)
+        session_env = SessionEnvironment(
+            name, login, password, aquarium_url, key)
         self._add_session_env(session_env)
 
     def remove_session(self, name):
@@ -515,7 +529,8 @@ class SessionManager(ODir):
 
     def _add_session_env(self, session_env):
         """Adds the session environment to the session manager"""
-        self._add(session_env.name, session_env, push_up=False, check_attr=False)
+        self._add(session_env.name, session_env,
+                  push_up=False, check_attr=False)
 
     @property
     def __meta(self):
@@ -544,7 +559,8 @@ class SessionManager(ODir):
         if name in self.sessions:
             self._curr_session_name = name
         else:
-            logger.warning("'{}' not in sessions ({})".format(name, ', '.join(self.sessions.keys())))
+            logger.warning("'{}' not in sessions ({})".format(
+                name, ', '.join(self.sessions.keys())))
 
     @property
     def session_env_list(self):
@@ -581,12 +597,14 @@ class SessionManager(ODir):
         encryption_key = None
         if not self.metadata.env_settings.exists() or force_new_key:
             if key is None:
-                logger.warning("No encryption key found. Generating new key...")
+                logger.warning(
+                    "No encryption key found. Generating new key...")
                 encryption_key = self.__new_encryption_key().decode()
             else:
                 encryption_key = key
         else:
-            encryption_key = self.metadata.env_settings.load_json()['encryption_key']
+            encryption_key = self.metadata.env_settings.load_json()[
+                'encryption_key']
         self.metadata.env_settings.dump_json(
             {
                 "root": str(self.abspath),
@@ -644,9 +662,11 @@ class SessionManager(ODir):
         self.set_dir(root_dir)
         self.name = root_name
 
-        env_pkls = glob(os.path.join(str(self.abspath), "*", SessionEnvironment.ENV_PKL))
+        env_pkls = glob(os.path.join(str(self.abspath),
+                                     "*", SessionEnvironment.ENV_PKL))
         for env_pkl in env_pkls:
-            session_env = SessionEnvironment.load_from_pkl(env_pkl, encryption_key)
+            session_env = SessionEnvironment.load_from_pkl(
+                env_pkl, encryption_key)
             if session_env is not None:
                 self._add_session_env(session_env)
         self.set_current(meta['current'])
@@ -666,7 +686,6 @@ class SessionManager(ODir):
             settings['container_id'] = cid
             self.metadata.env_settings.write(json.dumps(settings), 'w')
 
-
     def __str__(self):
         return "SessionManager(\n" \
                "  name={name}\n" \
@@ -674,12 +693,12 @@ class SessionManager(ODir):
                "  environment_location=\"{metadata}\"\n" \
                "  session_directory=\"{dir}\"\n" \
                "  container_id=\"{container_id}\")".format(
-            name=self.name,
-            metadata=str(self.metadata.env_settings.abspath),
-            current=self.current_session,
-            container_id=self.get_container_id(),
-            dir=str(self.abspath)
-        )
+                   name=self.name,
+                   metadata=str(self.metadata.env_settings.abspath),
+                   current=self.current_session,
+                   container_id=self.get_container_id(),
+                   dir=str(self.abspath)
+               )
 
     def __repr__(self):
         return "SessionManager(name={name}, env={env}".format(name=self.name, env=str(self.metadata.env_settings.abspath))
