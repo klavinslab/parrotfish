@@ -1,37 +1,129 @@
-# PARROTFISH
+[![travis build](https://img.shields.io/travis/klavinslab/parrotfish.svg)](https://travis-ci.org/klavinslab/parrotfish)
+[![Coverage Status](https://coveralls.io/repos/github/klavinslab/parrotfish/badge.svg?branch=master)](https://coveralls.io/github/klavinslab/parrotfish?branch=master)
+[![PyPI version](https://badge.fury.io/py/REPO.svg)](https://badge.fury.io/py/REPO)
 
-Have you ever wanted to write a protocol? If so, parrotfish is for you!
+![module_icon](images/module_icon.png?raw=true)
 
-## Prerequisites
+#### Build/Coverage Status
 
-* [Python3](https://www.python.org/downloads/)
+|     Branch      |                                                                      Build                                                                      |                                                                                     Coverage                                                                                     |
+| :-------------: | :---------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+|   **master**    |      [![travis build](https://img.shields.io/travis/klavinslab/parrotfish/master.svg)](https://travis-ci.org/klavinslab/parrotfish/master)      |      [![Coverage Status](https://coveralls.io/repos/github/klavinslab/parrotfish/badge.svg?branch=master)](https://coveralls.io/github/klavinslab/parrotfish?branch=master)      |
+| **development** | [![travis build](https://img.shields.io/travis/klavinslab/parrotfish/development.svg)](https://travis-ci.org/klavinslab/parrotfish/development) | [![Coverage Status](https://coveralls.io/repos/github/klavinslab/parrotfish/badge.svg?branch=development)](https://coveralls.io/github/klavinslab/parrotfish?branch=development) |
+
+# **parrotfish**
+
+Code and manage your Aquarium protocols and libraries through your IDE
+
+## Version/Status
+
+Code and ideas were taken from Garrett Newman. This branch is rebranding the interface
+and packaging to be more convenient for other users to adopt.
+
+Note that this version requires the new version of Trident that utilizes Pillowtalk.
 
 ## Installation
 
-1.  Clone the Parrotfish repository with
+### Requirements
 
-```bash
-git clone https://github.com/klavinslab/parrotfish
+* install this version of [trident](https://github.com/klavinslab/trident/tree/feature-pillowtalk-apiwrapper)
+  * cd to trident directory
+  * run `pip install .`
+
+```
+cd to/directory/parrotfish
+pip install parrotfish
 ```
 
-2.  Set up your Parrotfish directory with
+## Usage
+
+Once installed, the command line interface is automatically exposed. Take a look at the available
+commands by typing
 
 ```bash
-bash setup.sh
+pfish
 ```
 
-3.  Navigate to parrotfish/bin, and [install and configure Trident](https://github.com/klavinslab/trident) there.
+### Logging in
 
-## Using Parrotfish
+```bash
+pfish register <username> <password> <aquarium_url> <session_name>
+```
 
-### pfish set_remote [url][username] [password]
+### Managing environment
 
-This associates a remote Aquarium server with the current directory (a prerequisite for `push` and `pull`).
+List current environment state by:
 
-### pfish pull
+```bash
+pfish state
+```
 
-This clones all Operation Type code from the specified server via Trident into the current directory.
+Set your session by name:
 
-### pfish push
+```bash
+pfish set_session <session_name>
+```
 
-This pushes all Parrotfish-tracked code in the current directory to the specified server via Trident, except when a given file to be pushed has been updated on the server since the last pull.
+Set your current category ("all" for all categories):
+
+```bash
+pfish set_category <category_name>
+```
+
+List available categories on the server:
+
+```bash
+pfish categories
+```
+
+### Managing code
+
+Listing repo location:
+
+```bash
+pfish repo
+```
+
+Moving your repo:
+
+```bash
+pfish move_repo <path_to_new_location>
+```
+
+Get code for current session and category:
+
+```bash
+pfish fetch
+```
+
+Push code for current session and category:
+
+```bash
+pfish push
+```
+
+### Testing Operation Types
+
+Please consult the [Operation Type Testing documentation](./docs/operation_type_testing.md) for instructions on how to test Operation Types with Parrotfish.
+
+## Setting up scripts
+
+A fetch script may look like
+
+```bash
+#!/usr/bin/env bash
+
+pfish set_session nursery
+pfish set_category Cloning
+pfish fetch
+```
+
+A push script may look like:
+
+```bash
+#!/usr/bin/env bash
+
+pfish set_session nursery
+pfish set_category Cloning
+pfish push
+```

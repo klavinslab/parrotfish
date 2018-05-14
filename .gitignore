@@ -4,5 +4,19 @@ bin/meta
 protocols
 __pycache__
 trident
+**/config.json
+.sessions/state.pkl
+*.pkl
+/tests/session_environments/
+/.environ/
+/.cache/
+*.xml
+/parrotfish.egg-info/
+/ParrotFish.egg-info/
+/examples/setting_sessions.sh
+/examples/registering.sh
+/examples/
 
 .vscode
+*.swp
+/parrotfish/environment_data/
