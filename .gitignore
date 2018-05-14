@@ -18,5 +18,3 @@ trident
 /examples/
 
 .vscode
-*.swp
-/parrotfish/environment_data/
