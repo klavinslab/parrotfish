@@ -21,15 +21,20 @@ class CustomCompleter(WordCompleter):
     Matches commands only at current text position.
     """
 
-    def __init__(self, words, ignore_case=False, meta_dict=None, match_middle=False):
-        super().__init__(words, ignore_case=ignore_case, WORD=False, meta_dict=meta_dict, sentence=True,
+    def __init__(self, words, ignore_case=False, meta_dict=None,
+                 match_middle=False):
+        super().__init__(words, ignore_case=ignore_case, WORD=False,
+                         meta_dict=meta_dict, sentence=True,
                          match_middle=match_middle)
 
     def get_completions(self, document, complete_event):
-        """Override completion method that retrieves only completions whose length less than or equal
-        to the current completion text. This eliminates excessivlely long completion lists"""
+        """
+        Override completion method that retrieves only completions whose
+        length less than or equal to the current completion text.
+        This eliminates excessivlely long completion lists
+        """
 
-        get_words = lambda text: re.split('\s+', text)
+        def get_words(text): return re.split('\\s+', text)
         completions = list(super().get_completions(document, complete_event))
 
         # filter completions by length of word
@@ -75,7 +80,7 @@ class Shell(object):
             words = []
             products = itertools.product(*iterables)
             for prod in products:
-                for i, word in enumerate(prod):
+                for i, _word in enumerate(prod):
                     partial_prod = prod[:i + 1]
                     words.append(' '.join(partial_prod))
             return list(set(words))
@@ -86,13 +91,15 @@ class Shell(object):
             completions += add_completions(['fetch'], categories)
             completions += add_completions(['push_category'], categories)
         if self.cli._session_manager.sessions:
-            completions += add_completions(['set_session'], self.cli._session_manager.sessions.keys())
+            completions += add_completions(
+                ['set_session'],
+                self.cli._session_manager.sessions.keys())
         completions += ["exit"]
         completions += self.commands
         return CustomCompleter(list(set(completions)))
 
     def parse_shell_command(self, command):
-        args = re.split('\s+', command)
+        args = re.split('\\s+', command)
         fxn_name = args[0]
         args = args[1:]
         kwargs = {}
@@ -106,7 +113,8 @@ class Shell(object):
                 print(cmd.interface.__doc__)
             else:
                 if hasattr(self, '{}_interactive'.format(fxn_name)):
-                    args, kwargs = getattr(self, '{}_interactive'.format(fxn_name))()
+                    args, kwargs = getattr(
+                        self, '{}_interactive'.format(fxn_name))()
                 try:
                     return cmd(*args, **kwargs)
                 except Exception as e:
@@ -127,7 +135,8 @@ class Shell(object):
 
     @staticmethod
     def get_path():
-        path = prompt('> enter path: ', completer=PathCompleter(only_directories=True, expanduser=True))
+        path = prompt('> enter path: ', completer=PathCompleter(
+            only_directories=True, expanduser=True))
         return (os.path.expanduser(path),), {}
 
     def run(self):
@@ -135,8 +144,9 @@ class Shell(object):
         res = 1
         while not res == self.EXIT:
             def get_bottom_toolbar_tokens(cli):
-                # return [(Token.Toolbar, ' \'-h\' or \'--help\' for help | \'exit\' to exit')]
-                return [(Token.Toolbar, 'Dir: {}'.format(str(self.cli._session_manager.abspath)))]
+                return [(Token.Toolbar,
+                         'Dir: {}'.format(
+                             str(self.cli._session_manager.abspath)))]
 
             answer = prompt(completer=self.command_completer(),
                             get_prompt_tokens=self.get_prompt_tokens,
@@ -161,4 +171,3 @@ class Shell(object):
             (Token.Colon, ':'),
             (Token.Pound, '{}'.format(name + ": "))
         ]
-

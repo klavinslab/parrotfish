@@ -16,15 +16,15 @@ from parrotfish.utils.testing_tools import tagify, generate_test_data
 from pydent import AqSession
 from pydent.models import OperationType, Library
 
-logger = CustomLogging.get_logger(__name__)
 from copy import deepcopy
-
 from cryptography.fernet import Fernet, InvalidToken
+
+logger = CustomLogging.get_logger(__name__)
 
 
 class SessionEnvironment(ODir):
     """
-    Manages protocols (:class:`OperationType` & :class:`Library`) for a single 
+    Manages protocols (:class:`OperationType` & :class:`Library`) for a single
     Aquarium session.
 
     Features:
@@ -53,15 +53,18 @@ class SessionEnvironment(ODir):
                |   └──OperationType1__precondition.rb   (precondition code)
                └──LibraryType1              (Library folder)
                    |──LibraryType1.rb                   (library code)
-                   └──LibraryType1.json                 (data related to the Library)
+                   └──LibraryType1.json                 (library data)
 
-    Encryption details: Each managed session folder (:class:`SessionEnvironment`)
-    also stores information about
-    the Aquarium session it uses, which includes login and the url.
-    This ties the actual server (i.e. the url) to the managed session folder. For security,
-    ParrotFish does *not* directly store the :class:`AqSession.` Instead, passwords are encrypted
-    using Fernet (https://cryptography.io/en/latest/fernet/). Passwords are stored as an encrypted
-    string. This string can be decrypted using the proper key.
+    Encryption details:
+    Each managed session folder (:class:`SessionEnvironment`) also stores
+    information about the Aquarium session it uses, which includes login and
+    the url.
+    This ties the actual server (i.e. the url) to the managed session folder.
+    For security, ParrotFish does *not* directly store the :class:`AqSession.`
+    Instead, passwords are encrypted using Fernet
+    (https://cryptography.io/en/latest/fernet/).
+    Passwords are stored as an encrypted string.
+    This string can be decrypted using the proper key.
     """
 
     # name of the pickled file when saving or loading
@@ -79,7 +82,7 @@ class SessionEnvironment(ODir):
         :type password: str
         :param aquarium_url: aquarium url
         :type aquarium_url: str
-        :param encryption_key: Fernet encryption key to use to store the encrypted password
+        :param encryption_key: encryption key to use to store the password
         :type encryption_key: str
         """
         super().__init__(name, push_up=False, check_attr=False)
@@ -251,7 +254,7 @@ class SessionEnvironment(ODir):
     #     return [p for p in protocols if p.has("source")]
 
     # Methods for writing and reading OperationType and Library
-    # TODO: library and operation type methods are pretty similar, we could generalize but there's only two different models...
+    # TODO: library and operation type methods are similar, could generalize
     def get_operation_type_dir(self, category, operation_type_name):
         """
         Returns the :class:`ODir` that manages an operation_type
@@ -337,7 +340,8 @@ class SessionEnvironment(ODir):
 
         # write codes
         if not no_code:
-            for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
+            for accessor in ['protocol', 'precondition',
+                             'documentation', 'cost_model']:
                 logger.verbose("    saving {}".format(accessor))
                 ot_dir.get(accessor).write(metadata[accessor]['content'])
 
@@ -405,7 +409,7 @@ class SessionEnvironment(ODir):
         :rtype: OperationType
         """
         ot_dir = self.get_operation_type_dir(category, name)
-        metadata = ot_dir.meta.load_json()  # load the meta data from the .json file
+        metadata = ot_dir.meta.load_json()  # load metadata from the .json file
         ot = OperationType.load(metadata)
 
         ot.protocol.content = ot_dir.protocol.read()
@@ -438,24 +442,27 @@ class SessionEnvironment(ODir):
 
 class SessionManager(ODir):
     """
-    Manages multiple :class:`SessionEnvironment` instances. SessionEnvironments live
-    in a single directory managed by this class. Information about where the SessionManager
-    directory resides is stored in the 'environment_data/environment_settings.json` file.
-    By default, this is located where ParrotFish is installed so that is can be used globally
-    on the machine. Alternatively, a SessionManager can be constructed that uses a new
-    environement_settings file. The **environment_settings.json** also stores an
-    important encryption key so that :class:`SessionEnvironment`s can be decrypted and used properly.
+    Manages multiple :class:`SessionEnvironment` instances.
+    SessionEnvironments live in a single directory managed by this class.
+    Information about where the SessionManager directory resides is stored in
+    the 'environment_data/environment_settings.json` file.
+    By default, this is located where ParrotFish is installed so that is can be
+    used globally on the machine.
+    Alternatively, a SessionManager can be constructed that uses a new
+    environement_settings file.
+    The **environment_settings.json** also stores an encryption key so that
+    :class:`SessionEnvironment`s can be decrypted and used properly.
 
     Example session structure::
 
         meta_dir
         └──environment_data
-            └──environment_settings.json       (contains information about root directory)
+            └──environment_settings.json      (information about top directory)
 
         SessionManagerName          (Master or root directory)
         |──SessionEnvironment1      (Aquarium session)
         |   └──Category1            (Protocol Category)
-        |       |──.env_pkl         (contains information about SessionEnvironment1's AqSession)
+        |       |──.env_pkl         (SessionEnvironment1's AqSession)
         |       |──protocols        (protocols folder)
         |       |   |──OperationType1
         |       |   |   |──OperationType1.json
@@ -504,8 +511,10 @@ class SessionManager(ODir):
         self._curr_session_name = None
 
     def register_session(self, login, password, aquarium_url, name):
-        """Registers a new session by creating a AqSession, creating
-        a SessionEnvironment and adding it to the SessionManager"""
+        """
+        Registers a new session by creating a AqSession, creating
+        a SessionEnvironment and adding it to the SessionManager
+        """
         if name in self.sessions:
             logger.warning("'{}' already exists!".format(name))
             return
@@ -565,12 +574,14 @@ class SessionManager(ODir):
     @property
     def session_env_list(self):
         """Return all session environments"""
-        return [env for env in self.list_dirs() if isinstance(env, SessionEnvironment)]
+        return [env for env in self.list_dirs()
+                if isinstance(env, SessionEnvironment)]
 
     @property
     def sessions(self):
         """Returns all sessions"""
-        return {env.name: env.aquarium_session for env in self.session_env_list}
+        return {env.name: env.aquarium_session
+                for env in self.session_env_list}
 
     def get_session(self, name):
         """Gets a AqSession by name"""
@@ -578,8 +589,8 @@ class SessionManager(ODir):
         return session_env.aquarium_session
 
     def delete_session(self, name):
-        """Deletes a session, removing the folders and files as well as the abstract
-        ODir link"""
+        """Deletes a session, removing the folders and files as well as the
+        abstract ODir link"""
         session_env = self.get(name)
         session_env.rmdirs()
         session_env.remove_parent()
@@ -639,7 +650,9 @@ class SessionManager(ODir):
             session_env.save_to_pkl()
 
     def update_encryption_key(self, new_key):
-        """Updates the encryption key used to decrypt :class:`SessionEnvironment`s"""
+        """
+        Updates the encryption key used to decrypt :class:`SessionEnvironment`s
+        """
         old_key = self.__meta['encryption_key']
         for session_env in self.session_env_list:
             if session_env:
@@ -647,11 +660,13 @@ class SessionManager(ODir):
 
     # TODO: consolidate password hashes here
     def load_environments(self, encryption_key):
-        """Collects the SessionEnvironment pickles and returns a SessionManager with these
-        session_environments
+        """
+        Collects the SessionEnvironment pickles and returns a SessionManager
+        with these session_environments.
 
-        For examples `dir="User/Documents/Fishtank"` would load a SessionManager with
-        the name "Fishtank." Environments would be loaded from `User/Documents/FishTank/*/.env_pkl`
+        For examples `dir="User/Documents/Fishtank"` would load a
+        SessionManager with the name "Fishtank."
+        Environments would be loaded from `User/Documents/FishTank/*/.env_pkl`
         """
         meta = self.__meta
         self.name = os.path.basename(self.metadata.env_settings.name)
@@ -701,4 +716,6 @@ class SessionManager(ODir):
                )
 
     def __repr__(self):
-        return "SessionManager(name={name}, env={env}".format(name=self.name, env=str(self.metadata.env_settings.abspath))
+        return "SessionManager(name={name}, env={env}".format(
+            name=self.name,
+            env=str(self.metadata.env_settings.abspath))

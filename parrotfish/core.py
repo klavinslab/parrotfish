@@ -12,12 +12,13 @@ import fire
 from cryptography.fernet import Fernet
 from colorama import Fore
 from parrotfish.session_environment import SessionManager
-from parrotfish.utils import CustomLogging, docker_testing, format_json, compare_content
+from parrotfish.utils import (CustomLogging, docker_testing,
+                              format_json, compare_content)
+from parrotfish.shell import Shell
 from requests.exceptions import InvalidSchema
 
 logger = CustomLogging.get_logger(__name__)
 logger.setLevel("VERBOSE")
-from parrotfish.shell import Shell
 
 
 class CLI(object):
@@ -55,23 +56,24 @@ class CLI(object):
     def _get_categories(self):
         """Returns dictionary of category names and Library/OperationType"""
         categories = {}
-        operation_types = self._session_manager.current_session.OperationType.all()
+        operation_types = self.session.OperationType.all()
         libraries = self._session_manager.current_session.Library.all()
         for ot in operation_types:
-            l = categories.get(ot.category, [])
-            l.append(ot)
-            categories[ot.category] = l
+            category_list = categories.get(ot.category, [])
+            category_list.append(ot)
+            categories[ot.category] = category_list
         for lib in libraries:
-            l = categories.get(lib.category, [])
-            l.append(lib)
-            categories[lib.category] = l
+            category_list = categories.get(lib.category, [])
+            category_list.append(lib)
+            categories[lib.category] = category_list
         return categories
 
     def _load(self, path_to_metadata=None):
         """Loads the environment"""
         try:
             self._session_manager.load()
-            logger.cli("Environment file loaded from \"{}\"".format(self._session_manager.metadata.env_settings.abspath))
+            logger.cli("Environment file loaded from \"{}\"".format(
+                self._session_manager.metadata.env_settings.abspath))
             logger.cli("environment loaded")
             self._save()
             self.print_env()
@@ -91,7 +93,9 @@ class CLI(object):
             self.push_category(cat)
 
     def push_category(self, category_name):
-        """Push all :class:`OperationType` and :class:`Library` in a category"""
+        """
+        Push all :class:`OperationType` and :class:`Library` in a category.
+        """
         current_env = self._session_manager.current_env
         category = current_env.get_category_dir(category_name)
         for protocol in category.list_dirs():
@@ -103,38 +107,58 @@ class CLI(object):
         protocol = current_env.get_protocol_dir(category_name, protocol_name)
         if protocol.has("source"):
             # then its a Library
-            local_lib = current_env.read_library_type(category.name, protocol.name)
+            local_lib = current_env.read_library_type(
+                category.name, protocol.name)
             local_lib.code("source").update()
         if protocol.has("protocol"):
             # then its an OperationType
-            local_ot = current_env.read_operation_type(category.name, protocol.name)
-            for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
+            local_ot = current_env.read_operation_type(
+                category.name, protocol.name)
+            # TODO: unify accessing this list - used elsewhere
+            for accessor in ['protocol', 'precondition',
+                             'documentation', 'cost_model']:
                 code = getattr(local_ot, accessor)
                 server_code = local_ot.code(accessor)
 
-                diff_str = compare_content(server_code.content, code.content).strip()
+                diff_str = compare_content(
+                    server_code.content, code.content).strip()
                 if diff_str != '':
                     # Local change, so fetch remote and compare
-                    remote_ot = self._session_manager.current_session.OperationType.where({"category": category.name, "name": protocol.name})[0]
+                    remote_ot = self.session.OperationType.where(
+                        {"category": category.name, "name": protocol.name})[0]
                     remote_code = getattr(remote_ot, accessor)
-                    if code.id != remote_code.id and force == False:
-                        logger.cli(Fore.RED + "Local version of {}/{} ({}) out of date. Please fetch before pushing again: Push unsuccessful!".format(category.name, protocol.name, accessor))
+                    if code.id != remote_code.id and force is False:
+                        msg = "Local version of {}/{} ({}) out of date. "
+                        "Please fetch before pushing again"
+                        logger.cli(Fore.RED + msg.format(
+                            category.name, protocol.name, accessor))
                     else:
-                        logger.cli("++ Updating {}/{} ({})".format(category.name, local_ot.name, accessor))
+                        logger.cli(
+                            "++ Updating {}/{} ({})".format(category.name,
+                                                            local_ot.name,
+                                                            accessor))
                         print(diff_str)
                         code.update()
                 else:
-                    logger.cli("-- No changes for {}/{} ({})".format(category.name, local_ot.name, accessor))
+                    logger.cli(
+                        "-- No changes for {}/{} ({})".format(category.name,
+                                                              local_ot.name,
+                                                              accessor))
             self._save()
 
     def _get_operation_types_from_sever(self, category):
-        return self._session_manager.current_session.OperationType.where({"category": category})
+        return self._session_manager.current_session.OperationType.where(
+            {"category": category})
 
     def _get_library_types_from_server(self, category):
-        return self._session_manager.current_session.Library.where({"category": category})
+        return self._session_manager.current_session.Library.where(
+            {"category": category})
 
     def fetch(self, category):
-        """ Fetch protocols from the current session & category and pull to local repo. """
+        """
+        Fetch protocols from the current session and category and pull to local
+        repo.
+        """
         self._check_for_session()
         ots = self._get_operation_types_from_sever(category)
         libs = self._get_library_types_from_server(category)
@@ -170,14 +194,16 @@ class CLI(object):
 
             # Copy OT from last session to container session
             logger.cli(
-                "Copying protocol from {} to docker session".format(session_name))
+                "Copying protocol from {} to docker session".format(
+                    session_name))
             ot = session.OperationType.find_by_name(protocol_name)
             self._copy_operation_type(session_name, "docker", ot)
 
             # Load data to container
             logger.cli("Loading test data into container")
             current_env = self._session_manager.current_env
-            protocol = current_env.get_protocol_dir(category_name, protocol_name)
+            protocol = current_env.get_protocol_dir(
+                category_name, protocol_name)
             testing_data = docker_testing.load_data(protocol)
 
             # Push OT from container session to container
@@ -244,7 +270,9 @@ class CLI(object):
         sessions = self._sessions
         if len(sessions) == 0:
             logger.cli(
-                "There are no sessions. Use 'pfish register' to register a session. Use 'pfish register --h' for help.")
+                "There are no sessions. "
+                "Use 'pfish register' to register a session. "
+                "Use 'pfish register --h' for help.")
         else:
             logger.cli(format_json(self._sessions_json()))
         return sessions
@@ -266,11 +294,14 @@ class CLI(object):
         logger.cli(format_json(category_count))
 
     def set_session(self, session_name):
-        """ Set the session by name. Use "sessions" to find all available sessions. """
+        """
+        Set the session by name.
+        Use "sessions" to find all available sessions.
+        """
         sessions = self._session_manager.sessions
         if session_name not in sessions:
-            logger.error("Session \"{}\" not in available sessions ({})".format(session_name, ', '
-                                                                                              ''.join(sessions.keys())))
+            msg = "Session \"{}\" not in available sessions ({})"
+            logger.error(msg.format(session_name, ', '.join(sessions.keys())))
 
         logger.cli("Setting session to \"{}\"".format(session_name))
         self._session_manager.set_current(session_name)
@@ -304,8 +335,9 @@ class CLI(object):
 
     def generate_encryption_key(self):
         key = Fernet.generate_key().decode()
-        logger.warning("SAVE THIS KEY IN A SECURE PLACE IF YOU WANT TO USE YOUR REPO ON ANOTHER COMPUTER. "
-                   "IT WILL NOT APPEAR AGAIN.")
+        logger.warning(
+            "SAVE KEY IN A SECURE PLACE TO USE YOUR REPO ON ANOTHER COMPUTER. "
+            "IT WILL NOT APPEAR AGAIN.")
         logger.warning("NEW KEY: {}".format(key))
         self.__update_encryption_key(key)
 
@@ -349,8 +381,9 @@ class CLI(object):
             self._session_manager.register_session(login, password,
                                                    aquarium_url, name)
         except InvalidSchema:
-            raise InvalidSchema("Missing schema for {}. Did you forget the \"http://\"?"
-                                .format(aquarium_url))
+            raise InvalidSchema(
+                "Missing schema for {}. Did you forget the \"http://\"?"
+                .format(aquarium_url))
         logger.cli("registering session: {}".format(name))
         self.set_session(name)
         self._save()
@@ -412,11 +445,12 @@ def open_from_local(directory, encryption_key=None):
         FishTank          (Master or root directory)
         |──nursery      (Aquarium session)
         |   └──Category1            (Protocol Category)
-        |       |──.env_pkl         (contains information about SessionEnvironment1's AqSession)
+        |       |──.env_pkl         (SessionEnvironment1's AqSession)
         |       |──protocols        (protocols folder)
 
-    this method will attempt to open "FishTank" using the 'env.json' located within
-    FishTank. If it does not exist and an encryption key is provided, a new 'env.json'
+    this method will attempt to open "FishTank" using the 'env.json' located
+    within FishTank.
+    If it does not exist and an encryption key is provided, a new 'env.json'
     will be created.
 
     :param directory: directory path pointing to the parrotfish folder
