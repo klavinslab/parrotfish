@@ -16,7 +16,7 @@ logger = CustomLogging.get_logger(__name__)
 logger.setLevel("VERBOSE")
 from parrotfish.shell import Shell
 from parrotfish.utils import testing_tools
-
+import json
 
 class CLI(object):
     def __init__(self, sm):
@@ -310,10 +310,17 @@ class CLI(object):
         :rtype: None
         """
         ots = self.session().OperationType.where({"category": category, "name": operation_type_name})
+        if len(ots) == 0:
+            logger.error("No operation types found")
+            return None
         if not len(ots) == 1:
-            raise Exception("More than one OperationType found for {}:{}".format(category, operation_type_name))
-        ot = ots[0]
-        return self._run_test_on_operation_type(ot, batch_num, use_precondition)
+            logger.warn("{} operation types found for {}:{}".format(len(ots), category, operation_type_name))
+        results = []
+        for ot in ots:
+            result = self._run_test_on_operation_type(ot, batch_num, use_precondition)
+            results.append(result)
+        self._print_test_results(results)
+        return results
 
     def run_tests(self, category, batch_num, use_precondition=True):
         """
@@ -329,7 +336,15 @@ class CLI(object):
         for ot in ots:
             result = self._run_test_on_operation_type(ot, batch_num, use_precondition=use_precondition)
             results[ot.name] = result
+        self._print_test_results(results)
         return results
+
+    def _print_test_results(self, results):
+        for result in results:
+            ot = result['operations'][0].operation_type
+            print("{} (id={}, deployed={})".format(ot.name, ot.id, ot.deployed))
+            print("Passed: {}".format(result['passed']))
+            print(json.dumps(result['operation_statuses'], indent=4))
 
 
     def __str__(self):
