@@ -22,6 +22,30 @@ def generate_random_operations(ot, num_ops):
     return test_ops_data
 
 
+def _parse_result(result, session):
+    """Parses a result dictionary from Aquarium"""
+    if 'error' in result:
+        result.update({"passed": False})
+        return result
+    parsed_result = {
+        'operations': session.Operation.load(result['operations']),
+        'plans': session.Operation.load(result['plans']),
+        'job': session.Operation.load(result['job'])
+    }
+
+    parsed_result['job'].state = json.loads(parsed_result['job'].state)
+
+    parsed_result['passed'] = parsed_result['job'].state[-1]['operation'] == 'complete'
+
+    op_statuses = []
+    for op in parsed_result['operations']:
+        op_statuses.append(
+            op.dump(only={"associations", "status"})
+        )
+    parsed_result['operation_statuses'] = op_statuses
+    return parsed_result
+
+
 def run_operation_type_test(ot, testing_operations, use_precondition=False):
     """
     Runs a test of an OperationType using a list of operations
@@ -36,26 +60,14 @@ def run_operation_type_test(ot, testing_operations, use_precondition=False):
     :rtype: dict
     """
 
-    session = ot._session
-
     # create data for POST
     data = ot.dump()
     data['test_operations'] = testing_operations
     data['use_precondition'] = use_precondition
 
     # run tests
-    result = session.utils.aqhttp.post('operation_types/test', json_data=data)
-
-    parsed_result = {
-        'operations': session.Operation.load(result['operations']),
-        'plans': session.Operation.load(result['plans']),
-        'job': session.Operation.load(result['job'])
-    }
-    parsed_result['job'].state = json.loads(parsed_result['job'].state)
-
-    parsed_result['passed'] = parsed_result['job'].state[-1]['operation'] == 'complete'
-
-    return parsed_result
+    result = ot.session.utils.aqhttp.post('operation_types/test', json_data=data)
+    return _parse_result(result, ot.session)
 
 
 def run_operation_test_with_random(ot, num_ops, use_precondition=False):

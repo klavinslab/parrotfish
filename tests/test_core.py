@@ -11,6 +11,8 @@ import uuid
 login = "vrana"
 password = "Mountain5"
 url = "http://52.27.43.242:81/"
+OT_TEST_CATEGORY = "ParrotFishTest"
+
 
 
 def test_register(cli, credentials):
@@ -49,7 +51,7 @@ def test_load(cli, credentials):
 
     # load another cli using same files
     old_sm = cli._session_manager
-    copied_sm = SessionManager(old_sm.abspath, meta_dir=old_sm.metadata.abspath, meta_name=old_sm.metadata.env_settings.name)
+    copied_sm = SessionManager(old_sm.abspath, config_dir=old_sm.config.abspath, config_name=old_sm.config.env_settings.name)
     copied_sm.load()
     cli2 = CLI(copied_sm)
 
@@ -83,7 +85,7 @@ def test_move_repo(cli, tmpdir_factory, credentials):
     cli.register(**credentials['nursery'])
 
     # assert root directory
-    old_root = cli._session_manager._SessionManager__meta['root']
+    old_root = cli._session_manager._SessionManager__config['root']
 
     # move the repo
     cli.move_repo(newdir)
@@ -97,7 +99,7 @@ def test_move_repo(cli, tmpdir_factory, credentials):
     assert str(cli._session_manager.abspath) == os.path.join(str(newdir), cli._session_manager.name)
 
     # assert root in env.json was changed
-    new_root = cli._session_manager._SessionManager__meta['root']
+    new_root = cli._session_manager._SessionManager__config['root']
     assert new_root == os.path.join(str(newdir), cli._session_manager.name)
     assert old_root != new_root
 
@@ -115,13 +117,13 @@ def test_categories(cli, credentials):
 
 def test_list_protocols(cli, credentials):
     cli.register(**credentials['nursery'])
-    cli.fetch("ParrotFishTest")
+    cli.fetch(OT_TEST_CATEGORY)
     cli.protocols()
 
 
 def test_fetch(cli, credentials):
     cli.register(**credentials['nursery'])
-    cli.fetch("ParrotFishTest")
+    cli.fetch(OT_TEST_CATEGORY)
     cli.ls()
 
     sm = cli._session_manager
@@ -130,7 +132,7 @@ def test_fetch(cli, credentials):
     session = sm.list_dirs()[0]
 
     categories = session.categories
-    assert "ParrotFishTest" in [x.name for x in categories]
+    assert OT_TEST_CATEGORY in [x.name for x in categories]
 
     # files
     for cat in categories:
@@ -142,25 +144,31 @@ def test_fetch(cli, credentials):
 
 def test_push_category(cli, credentials):
     cli.register(**credentials['nursery'])
-    cli.fetch("ParrotFishTest")
+    cli.fetch(OT_TEST_CATEGORY)
     cli.ls()
 
     # just get the first operation type
     sm = cli._session_manager
     session = sm.list_dirs()[0]
-    protocol = session.categories[0].list_dirs()[0]
 
-    old_local_ot = session.read_operation_type("ParrotFishTest", protocol.name)
+    ot_name = "ParrotFishPushPullOperation"
+    dirs = session.categories[0].list_dirs()
+    protocol = None
+    for d in dirs:
+        if d.name == ot_name:
+            protocol = d
+
+    old_local_ot = session.read_operation_type(OT_TEST_CATEGORY, protocol.name)
     aqsession = AqSession(**credentials['nursery'])
     old_loaded_ot = aqsession.OperationType.find_by_name(old_local_ot.name)
 
     # push the content
     new_content = str(uuid.uuid4())
     protocol.protocol.write(new_content)
-    cli.push_category("ParrotFishTest")
+    cli.push_category(OT_TEST_CATEGORY)
 
     # new operation types
-    new_local_ot = session.read_operation_type("ParrotFishTest", protocol.name)
+    new_local_ot = session.read_operation_type(OT_TEST_CATEGORY, protocol.name)
     new_loaded_ot = aqsession.OperationType.find_by_name(new_local_ot.name)
 
     # compare content
@@ -168,3 +176,35 @@ def test_push_category(cli, credentials):
     assert new_local_ot.protocol.content == new_content
     assert old_local_ot.protocol.content != new_content
     print(utils.compare_content(old_local_ot.protocol.content, new_local_ot.protocol.content))
+
+
+def test_run_test_for_single_operation_type(cli, credentials):
+    cli.register(**credentials['nursery'])
+    cli.fetch(OT_TEST_CATEGORY)
+    result = cli.run_test(OT_TEST_CATEGORY, "ParrotFishTestOperation", 5, True)
+    print(result)
+
+def test_run_test_for_category(cli, credentials):
+    cli.register(**credentials['nursery'])
+    cli.fetch(OT_TEST_CATEGORY)
+    results = cli.run_tests(OT_TEST_CATEGORY, 5, True)
+    for k, v in results.items():
+        print("{}: {}".format(k, v['passed']))
+    # cli.register(**credentials['nursery'])
+    # cli.fetch(OT_TEST_CATEGORY)
+    # cli.ls()
+    #
+    # sm = cli._session_manager
+
+    # # get first session folder
+    # session = sm.list_dirs()[0]
+    #
+    # categories = session.categories
+    # assert OT_TEST_CATEGORY in [x.name for x in categories]
+    #
+    # # files
+    # for cat in categories:
+    #     protocols = cat.list_dirs()
+    #     for protocol in protocols:
+    #         files = protocol.list_files()
+    #         assert len(files) > 0

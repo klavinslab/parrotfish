@@ -1,28 +1,6 @@
 PYFISH TODO
 ===========
 
-Optimization
-- pfish pull
-  - Only load code content if write is necessary
-
-Improve Installation Experience
-- pfish.sh should mention installing Trident before everything's ready
-  - "source ..." doesn't work for MacOS?
-- pfish.py should check for Trident install
-- pfish.py should create config.py if it doesn't exist
-
-Features
-+ pfish set_remote [name] [url] [login?]
-  + Save server login config in JSON for given repository
-- Protocol testing
-  - Run tests like in Developer tab (new Trident feature?)
-  - Plan submission and debugging
-
-Bigfixes
-- More intelligently pull from OTs with conflicting names (prioritize by most recently updated and then id)
-
-
-- Make separate class for the Environment
-    - save session, sessions, root etc.
-    - shouldn't touch main ParrotFish class at all
-- better python and bash run scripts
+- Just load into the cd'd directory, with confirmation
+- If doesn't exist, create new files
+- do we want password saved in folder? Expiring token?

@@ -91,6 +91,7 @@ def test_session_manage_mkdirs(sm, credentials):
     sm.rmdirs()
     assert not os.path.isdir(sm.abspath)
 
+
 # TODO: better test for loaded_sm
 def test_session_manager_save_and_load(sm, credentials):
 
@@ -99,7 +100,7 @@ def test_session_manager_save_and_load(sm, credentials):
 
     sm.save()
 
-    copied_sm = SessionManager(sm.abspath, meta_dir=sm.metadata.abspath, meta_name=sm.metadata.env_settings.name)
+    copied_sm = SessionManager(sm.abspath, config_dir=sm.config.abspath, config_name=sm.config.env_settings.name)
     copied_sm.load()
     assert len(copied_sm._children) == len(sm._children)
     assert copied_sm.sessions.keys() == sm.sessions.keys()

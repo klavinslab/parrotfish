@@ -414,7 +414,7 @@ class SessionManager(ODir):
         os.path.dirname(os.path.abspath(__file__)), 'environment_data')
     DEFAULT_METADATA_NAME = 'environment_settings.json'
 
-    def __init__(self, dir, name="FishTank", meta_dir=None, meta_name=None):
+    def __init__(self, dir, name="FishTank", config_dir=None, config_name=None):
         """
         SessionManager constructor
 
@@ -422,22 +422,22 @@ class SessionManager(ODir):
         :type dir: str
         :param name: name of the folder
         :type name: str
-        :param meta_dir: directory to store the metadata
-        :type meta_dir: str
-        :param meta_name: name of the file to store the metadata
-        :type meta_name: str
+        :param config_dir: directory to store the metadata
+        :type config_dir: str
+        :param config_name: name of the file to store the metadata
+        :type config_name: str
         """
         super().__init__(name, push_up=False, check_attr=False)
         self.set_dir(dir)
 
         # Add metadata (has default)
         # this is where session manager information will be stored
-        if meta_dir is None:
-            meta_dir = self.DEFAULT_METADATA_LOC
-        if meta_name is None:
-            meta_name = self.DEFAULT_METADATA_NAME
-        self.metadata = ODir(meta_dir)
-        self.metadata.add_file(meta_name, 'env_settings')
+        if config_dir is None:
+            config_dir = self.DEFAULT_METADATA_LOC
+        if config_name is None:
+            config_name = self.DEFAULT_METADATA_NAME
+        self.config = ODir(config_dir)
+        self.config.add_file(config_name, 'env_settings')
 
         self._curr_session_name = None
 
@@ -447,7 +447,7 @@ class SessionManager(ODir):
         if name in self.sessions:
             logger.warning("'{}' already exists!".format(name))
             return
-        key = str.encode(self.__meta['encryption_key'])
+        key = str.encode(self.__config['encryption_key'])
         session_env = SessionEnvironment(name, login, password, aquarium_url, key)
         self._add_session_env(session_env)
 
@@ -469,10 +469,10 @@ class SessionManager(ODir):
         self._add(session_env.name, session_env, push_up=False, check_attr=False)
 
     @property
-    def __meta(self):
-        if not self.metadata.env_settings.exists():
+    def __config(self):
+        if not self.config.env_settings.exists():
             self.save()
-        return self.metadata.env_settings.load_json()
+        return self.config.env_settings.load_json()
 
     @property
     def current_env(self):
@@ -530,15 +530,15 @@ class SessionManager(ODir):
     def save(self, force_new_key=False, key=None):
         """Save the metadata"""
         encryption_key = None
-        if not self.metadata.env_settings.exists() or force_new_key:
+        if not self.config.env_settings.exists() or force_new_key:
             if key is None:
                 logger.warning("No encryption key found. Generating new key...")
                 encryption_key = self.__new_encryption_key().decode()
             else:
                 encryption_key = key
         else:
-            encryption_key = self.metadata.env_settings.load_json()['encryption_key']
-        self.metadata.env_settings.dump_json(
+            encryption_key = self.config.env_settings.load_json()['encryption_key']
+        self.config.env_settings.dump_json(
             {
                 "root": str(self.abspath),
                 'current': self._curr_session_name,
@@ -552,7 +552,7 @@ class SessionManager(ODir):
     def load(self, meta=None):
         """Load from the metadata"""
         if meta is None:
-            meta = self.__meta
+            meta = self.__config
         if __version__ != meta['version']:
             logger.warning("Version mismatched! Environment data stored using "
                            "ParrotFish version '{}' but currently using '{}'"
@@ -572,7 +572,7 @@ class SessionManager(ODir):
 
     def update_encryption_key(self, new_key):
         """Updates the encryption key used to decrypt :class:`SessionEnvironment`s"""
-        old_key = self.__meta['encryption_key']
+        old_key = self.__config['encryption_key']
         for session_env in self.session_env_list:
             if session_env:
                 session_env.update_encryption_key(old_key, new_key)
@@ -585,8 +585,8 @@ class SessionManager(ODir):
         For examples `dir="User/Documents/Fishtank"` would load a SessionManager with
         the name "Fishtank." Environments would be loaded from `User/Documents/FishTank/*/.env_pkl`
         """
-        meta = self.__meta
-        self.name = os.path.basename(self.metadata.env_settings.name)
+        meta = self.__config
+        self.name = os.path.basename(self.config.env_settings.name)
 
         # set root path
         root_dir = os.path.dirname(meta['root'])
@@ -609,10 +609,10 @@ class SessionManager(ODir):
                "  environment_location=\"{metadata}\"\n" \
                "  session_directory=\"{dir}\")".format(
             name=self.name,
-            metadata=str(self.metadata.env_settings.abspath),
+            metadata=str(self.config.env_settings.abspath),
             current=self.current_session,
             dir=str(self.abspath)
         )
 
     def __repr__(self):
-        return "SessionManager(name={name}, env={env}".format(name=self.name, env=str(self.metadata.env_settings.abspath))
+        return "SessionManager(name={name}, env={env}".format(name=self.name, env=str(self.config.env_settings.abspath))

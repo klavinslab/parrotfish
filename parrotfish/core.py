@@ -15,6 +15,7 @@ from requests.exceptions import InvalidSchema
 logger = CustomLogging.get_logger(__name__)
 logger.setLevel("VERBOSE")
 from parrotfish.shell import Shell
+from parrotfish.utils import testing_tools
 
 
 class CLI(object):
@@ -68,7 +69,7 @@ class CLI(object):
         """Loads the environment"""
         try:
             self._session_manager.load()
-            logger.cli("Environment file loaded from \"{}\"".format(self._session_manager.metadata.env_settings.abspath))
+            logger.cli("Environment file loaded from \"{}\"".format(self._session_manager.config.env_settings.abspath))
             logger.cli("environment loaded")
             self._save()
             self.print_env()
@@ -198,7 +199,7 @@ class CLI(object):
         self._save()
 
     def reset(self):
-        self._session_manager.metadata.rmdirs()
+        self._session_manager.config.rmdirs()
         self._session_manager.rmdirs()
         self._session_manager.save(force_new_key=True)
 
@@ -286,6 +287,51 @@ class CLI(object):
         logger.cli("Opening new shell")
         Shell(self).run()
 
+    def _run_test_on_operation_type(self, ot, batch_num, use_precondition):
+        """
+
+        :param ot: OperationType
+        :type ot: pydent.models.OperationType
+        :return: None
+        :rtype: None
+        """
+        result = testing_tools.run_operation_test_with_random(ot, 5, use_precondition=use_precondition)
+        return result
+
+    def run_test(self, category, operation_type_name, batch_num, use_precondition=True):
+        """
+        Run test on a particular operation
+
+        :param category:
+        :type category:
+        :param operation_type_name:
+        :type operation_type_name:
+        :return: None
+        :rtype: None
+        """
+        ots = self.session().OperationType.where({"category": category, "name": operation_type_name})
+        if not len(ots) == 1:
+            raise Exception("More than one OperationType found for {}:{}".format(category, operation_type_name))
+        ot = ots[0]
+        return self._run_test_on_operation_type(ot, batch_num, use_precondition)
+
+    def run_tests(self, category, batch_num, use_precondition=True):
+        """
+        Run tests on a category
+
+        :param category: category name
+        :type category: basestring
+        :return: None
+        :rtype: None
+        """
+        ots = self.session().OperationType.where({"category": category})
+        results = {}
+        for ot in ots:
+            result = self._run_test_on_operation_type(ot, batch_num, use_precondition=use_precondition)
+            results[ot.name] = result
+        return results
+
+
     def __str__(self):
         return str(self._session_manager)
 
@@ -328,7 +374,7 @@ def open_from_local(directory, encryption_key=None):
     """
     sm_dir = os.path.dirname(directory)
     sm_name = os.path.basename(directory)
-    sm = SessionManager(sm_dir, sm_name, meta_dir=directory)
+    sm = SessionManager(sm_dir, sm_name, config_dir=directory)
     if encryption_key:
         sm.update_encryption_key(encryption_key)
     sm.load()

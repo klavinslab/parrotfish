@@ -35,7 +35,7 @@ def sm(tmpdir_factory):
     """Creates a new :class:`SessionManager` with its own temporary directories"""
     fishtank_loc = tmpdir_factory.mktemp('fishtankdir')
     env_loc = tmpdir_factory.mktemp('env')
-    sm = SessionManager(fishtank_loc, meta_dir=env_loc, meta_name='temp_env.json')
+    sm = SessionManager(fishtank_loc, config_dir=env_loc, config_name='temp_env.json')
     return sm
 
 

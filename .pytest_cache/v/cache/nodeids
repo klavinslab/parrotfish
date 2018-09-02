@@ -1,0 +1,6 @@
+[
+  "tests/test_testing_tools.py::test_generate_random_operations",
+  "tests/test_testing_tools.py::test_run_random_ops",
+  "tests/test_testing_tools.py::test_precondition_fail",
+  "tests/test_testing_tools.py::test_batch_condition_fail"
+]

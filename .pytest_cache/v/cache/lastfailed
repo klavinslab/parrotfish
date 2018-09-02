@@ -1,0 +1,4 @@
+{
+  "tests/test_session_environment.py::test_library_controller": true,
+  "tests/test_session_environment.py::test_operation_type_controller": true
+}
