@@ -16,11 +16,6 @@ Code and manage your Aquarium protocols and libraries through your IDE
 
 ## Version/Status
 
-Code and ideas were taken from Garrett Newman. This branch is rebranding the interface
-and packaging to be more convenient for other users to adopt.
-
-Note that this version requires the new version of Trident that utilizes Pillowtalk.
-
 ## Installation
 
 ### Requirements
