@@ -12,7 +12,62 @@ Branch | Build | Coverage
 
 # **parrotfish**
 
-Code and manage your Aquarium protocols and libraries through your IDE
+Code and manage your Aquarium protocols and libraries through your IDE.
+
+## Getting Started
+
+Install pfish using pip3. Download parrotfish and cd into the directory. Install by running the following:
+
+```
+pip3 install .
+```
+
+Once installed, a command line interface is provided in your terminal by running:
+
+```
+pfish
+```
+
+Try it to checkout the CLI documentation and help docs.
+
+To actually begin using pfish, your must register an Aquarium session to your computer. To do this,
+run the following in your terminal replacing your login credentials with your Aquarium login.
+
+```bash
+pfish register <username> <password> <aquarium_url> <session_name>
+```
+
+The session_name will be the string you use to reference this session. To see the list of your registered sessions,
+run
+
+```bash
+pfish sessions
+```
+
+Which should return something like:
+
+```
+nursery:        <AqSession(name=nursery, AqHTTP=<AqHTTP(vrana, http://52.27.43.242:81/)>))>
+production:     <AqSession(name=production, AqHTTP=<AqHTTP(vrana, http://52.27.43.242/)>))>
+```
+
+Pfish maintains a memory of which session you are currently working in. To see which session you are currently
+working in run:
+
+### Running in *Shell* mode
+
+Pfish also features an interactive shell to help get you started. Begin the shell by running:
+
+```
+pfish shell
+```
+
+![shell](docsrc/pfish_shell.gif)
+
+Click the **Tab** button to view a list of command and argument available in pfish:
+
+
+
 
 ## Version/Status
 
