@@ -8,15 +8,17 @@ from pathlib import Path
 
 import fire
 from cryptography.fernet import Fernet
+from requests.exceptions import InvalidSchema
+
 from parrotfish.session_environment import SessionManager
 from parrotfish.utils import CustomLogging, format_json, compare_content
-from requests.exceptions import InvalidSchema
 
 logger = CustomLogging.get_logger(__name__)
 logger.setLevel("VERBOSE")
 from parrotfish.shell import Shell
 from parrotfish.utils import testing_tools
 import json
+
 
 class CLI(object):
     def __init__(self, sm):
@@ -93,23 +95,24 @@ class CLI(object):
         current_env = self._session_manager.current_env
         category = current_env.get_category_dir(category_name)
         for protocol in category.list_dirs():
+            local_protocol = None
+            accessors = []
             if protocol.has("source"):
-                # then its a Library
-                local_lib = current_env.read_library_type(category.name, protocol.name)
-                local_lib.code("source").update()
-            if protocol.has("protocol"):
-                # then its an OperationType
-                local_ot = current_env.read_operation_type(category.name, protocol.name)
-                for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
-                    code = getattr(local_ot, accessor)
-                    server_code = local_ot.code(accessor)
-                    diff_str = compare_content(server_code.content, code.content).strip()
-                    if diff_str != '':
-                        logger.cli("++ Updating {}/{} ({})".format(category.name, local_ot.name, accessor))
-                        print(diff_str)
-                        code.update()
-                    else:
-                        logger.cli("-- No changes for {}/{} ({})".format(category.name, local_ot.name, accessor))
+                local_protocol = current_env.read_library_type(category.name, protocol.name)
+                accessors = ["source"]
+            elif protocol.has("protocol"):
+                local_protocol = current_env.read_operation_type(category.name, protocol.name)
+                accessors = ['protocol', 'precondition', 'documentation', 'cost_model']
+            for accessor in accessors:
+                code = getattr(local_protocol, accessor)
+                server_code = local_protocol.code(accessor)
+                diff_str = compare_content(server_code.content, code.content).strip()
+                if diff_str != '':
+                    logger.cli("++ Updating {}/{} ({})".format(category.name, local_protocol.name, accessor))
+                    print(diff_str)
+                    code.update()
+                else:
+                    logger.cli("-- No changes for {}/{} ({})".format(category.name, local_protocol.name, accessor))
         self._save()
 
     def _get_operation_types_from_sever(self, category):
@@ -206,7 +209,7 @@ class CLI(object):
     def generate_encryption_key(self):
         key = Fernet.generate_key().decode()
         logger.warning("SAVE THIS KEY IN A SECURE PLACE IF YOU WANT TO USE YOUR REPO ON ANOTHER COMPUTER. "
-                   "IT WILL NOT APPEAR AGAIN.")
+                       "IT WILL NOT APPEAR AGAIN.")
         logger.warning("NEW KEY: {}".format(key))
         self.__update_encryption_key(key)
 
@@ -345,7 +348,6 @@ class CLI(object):
             print("{} (id={}, deployed={})".format(ot.name, ot.id, ot.deployed))
             print("Passed: {}".format(result['passed']))
             print(json.dumps(result['operation_statuses'], indent=4))
-
 
     def __str__(self):
         return str(self._session_manager)
