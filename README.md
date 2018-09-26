@@ -12,7 +12,13 @@ Branch | Build | Coverage
 
 # **parrotfish**
 
-Code and manage your Aquarium protocols and libraries through your IDE.
+Code and manage your Aquarium protocols and libraries through your IDE. **ParrotFish** (aka **pfish**)
+is a cli interface for downloading ('fetch') and uploading ('push') Aquarium protocols.
+
+### Features:
+
+* fetch operation_type definitions, protocol code, documentation, precondition, and cost model to you local machine
+* push changes to protocol, documentation, precondition, and cost models **all** at once
 
 ## Getting Started
 
@@ -52,24 +58,45 @@ production:     <AqSession(name=production, AqHTTP=<AqHTTP(vrana, http://52.27.4
 ```
 
 Pfish maintains a memory of which session you are currently working in. To see which session you are currently
-working in run:
+working in run. You may set the session by running:
+
+```bash
+pfish set-session <session_name>
+```
+
+replacing <session_name> with the actual name of your session.
+
+Finally, pfish needs somewhere to save the your protocols. To set the repo location (or move existing protocols), run:
+
+```bash
+pfish move-repo <path>
+```.
 
 ### Running in *Shell* mode
 
-Pfish also features an interactive shell to help get you started. Begin the shell by running:
+Pfish also features an interactive shell to help get you started. The shell offers suggestions and autocomplete
+to help you run pfish commands. For example, the following video demonstrates switching sessions, fetching a protocol
+category, and listing the protocols in you local repo:
+
+![shell](/docsrc/pfish_shell.gif)
+
+Begin the shell by running:
 
 ```
 pfish shell
 ```
 
-![shell](docsrc/pfish_shell.gif)
-
-Click the **Tab** button to view a list of command and argument available in pfish:
-
-
-
+Click the **Tab** button to view a list of command and argument available in pfish. You may exit the shell by entering
+`exit`.
 
 ## Version/Status
+
+This is currently in development. To move to production, likely the following features and fixes would need to be added:
+
+* better tests
+* CI tests on windows, mac, and linux?
+* docker integration
+* removal of encryption features that will likely confuse users down the road
 
 ## Installation
 
