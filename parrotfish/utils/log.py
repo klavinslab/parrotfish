@@ -45,6 +45,5 @@ class CustomLogging(object):
         cls.children.append(logger)
         return logger
 
-
 CustomLogging.add_log_function("VERBOSE", 21, color=Fore.LIGHTMAGENTA_EX)
-CustomLogging.add_log_function("CLI", 29, color=Fore.BLUE)
+CustomLogging.add_log_function("CLI", 29)

@@ -121,22 +121,53 @@ class CLI(object):
     def _get_library_types_from_server(self, category):
         return self._session_manager.current_session.Library.where({"category": category})
 
+    def _get_all_operation_types_from_server(self):
+        return self._session_manager.current_session.OperationType.all()
+
+    def _get_all_library_types_from_server(self):
+        return self._session_manager.current_session.Library.all()
+
+    def fetch_all(self):
+        """Fetches all protocols from the current session"""
+        self._check_for_session()
+        ots = self._get_all_operation_types_from_server()
+        libs = self._get_all_library_types_from_server()
+        self._fetch(ots, libs)
+
+    def _fetch(self, ots, libs):
+        logger.cli("{} operation_types found".format(len(ots)))
+        logger.cli("This may take awhile...")
+        total = len(ots) + len(libs)
+        counter = 0
+
+        make_msg = lambda m, count: "{}/{} saving {}:{}".format(count, total, m.category, m.name)
+
+        for ot in ots:
+            counter += 1
+            msg = make_msg(ot, counter)
+            try:
+                logger.cli(msg)
+                curr_env = self._session_manager.current_env
+                curr_env.write_operation_type(ot)
+            except TypeError as e:
+                logger.error("Could not fetch {}.\n{}".format(ot.name, e))
+        for lib in libs:
+            counter += 1
+            msg = make_msg(lib, counter)
+            try:
+                logger.cli(msg)
+                curr_env = self._session_manager.current_env
+                curr_env.write_library(lib)
+            except TypeError as e:
+                logger.error("Could not fetch {}\n{}.".format(lib.name, e))
+        self._save()
+
     def fetch(self, category):
         """ Fetch protocols from the current session & category and pull to local repo. """
         self._check_for_session()
         ots = self._get_operation_types_from_sever(category)
         libs = self._get_library_types_from_server(category)
-        logger.cli("{} operation_types found".format(len(ots)))
-        logger.cli("This may take awhile...")
-        for ot in ots:
-            logger.cli("Saving {}".format(ot.name))
-            curr_env = self._session_manager.current_env
-            curr_env.write_operation_type(ot)
-        for lib in libs:
-            logger.cli("Saving {}".format(lib.name))
-            curr_env = self._session_manager.current_env
-            curr_env.write_library(lib)
-        self._save()
+        self._fetch(ots, libs)
 
     @property
     def _sessions(self):
