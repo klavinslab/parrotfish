@@ -8,11 +8,12 @@ from glob import glob
 
 import dill
 from opath import ODir
+from pydent import AqSession
+from pydent.models import OperationType, Library
+
 from parrotfish.__version__ import __version__
 from parrotfish.utils import sanitize_filename, sanitize_attribute
 from parrotfish.utils.log import CustomLogging
-from pydent import AqSession
-from pydent.models import OperationType, Library
 
 logger = CustomLogging.get_logger(__name__)
 from copy import deepcopy
@@ -80,7 +81,6 @@ class SessionEnvironment(ODir):
         self.encrypted_password = cipher_suite.encrypt(str.encode(password))
         self.login = login
         self.aquarium_url = aquarium_url
-
         # this should never be saved in the pickle
         self.aquarium_session = self.create_session(encryption_key)
 
@@ -108,9 +108,10 @@ class SessionEnvironment(ODir):
                                   name=self.name)
         except InvalidToken:
             logger.warning(self.encrypted_password)
-            logger.warning("Encryption key mismatch! Cannot create session. Use 'pfish generate-encryption-key' to generate"
-                           "a new key. Alternatively, use 'pfish set-encryption-key [YOURKEY]' if you have a pre-generated"
-                           "key")
+            logger.warning(
+                "Encryption key mismatch! Cannot create session. Use 'pfish generate-encryption-key' to generate"
+                "a new key. Alternatively, use 'pfish set-encryption-key [YOURKEY]' if you have a pre-generated"
+                "key")
         self.aquarium_session = aqsession
         return aqsession
 
@@ -373,6 +374,48 @@ class SessionEnvironment(ODir):
         lib.connect_to_session(self.aquarium_session)
         return lib
 
+    # def get_optype_test(self, operation_type):
+    #     self.add
+
+    def _test_category_name(self, category_name):
+        cat_dirname = 'test_' + sanitize_filename(category_name)
+        return cat_dirname.lower()
+
+    def _boilerplate_path(self):
+        here = os.path.abspath(os.path.dirname(__file__))
+        boilerplate_path = os.path.join(here, 'data', 'boilerplate', 'pytest')
+        return boilerplate_path
+
+    def _create_pytest_boilerplate(self, session):
+        boilerplate_path = self._boilerplate_path()
+
+        # create outer tests/conftest.py
+        with open(os.path.join(boilerplate_path, 'conftest.py.txt'), 'r') as f:
+            self.add('tests').write_file('conftest.py', mode='w', data=f.read())
+
+        session_dir = self.get('tests').add(session.name)
+        with open(os.path.join(boilerplate_path, 'conftest.py.session.txt'), 'r') as f:
+            txt = f.read().format(session_name=session.name)
+            session_dir.write_file('conftest.py', mode='w', data=txt)
+
+        with open(os.path.join(self._boilerplate_path(), 'test.py.txt'), 'r') as f:
+            bp_test_code = f.read()
+
+        for cat in self.categories:
+            category = cat.name
+            cat_test_dir = session_dir.add(self._test_category_name(category))
+            with open(os.path.join(boilerplate_path, 'conftest.py.category.txt'), 'r') as f:
+                txt = f.read().format(category_name=cat.name)
+                cat_test_dir.write_file('conftest.py', mode='w', data=txt)
+
+            for ot_dir in cat.list_dirs():
+                # ot_dir = self.get_operation_type_dir(category, name)
+                metadata = ot_dir.meta.load_json()  # load the meta data from the .json file
+                ot = OperationType.load(metadata)
+                filename = 'test_{}.py'.format(sanitize_filename(ot.name))
+                txt = bp_test_code.format(optype_name=ot.name)
+                cat_test_dir.write_file(filename, mode='w', data=txt)
+
 
 class SessionManager(ODir):
     """
@@ -408,7 +451,6 @@ class SessionManager(ODir):
         └──SessionEnvironment2
             └── ...
     """
-
 
     DEFAULT_METADATA_LOC = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), 'environment_data')

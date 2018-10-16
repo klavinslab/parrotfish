@@ -383,6 +383,11 @@ class CLI(object):
     def __str__(self):
         return str(self._session_manager)
 
+    def create_pytest_boilerplate(self):
+        """Creates pytest boilerplate code in the current sessions directory."""
+        env = self._session_manager.current_env
+        env._create_pytest_boilerplate(self._session_manager.current_session)
+
 
 def open_from_global():
     """

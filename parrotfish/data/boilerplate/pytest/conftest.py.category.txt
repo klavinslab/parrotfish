@@ -1,0 +1,12 @@
+import pytest
+
+@pytest.fixture(scope="module")
+def category():
+    return "{category_name}"
+
+@pytest.fixture(scope="module")
+def get_optype_by_name(category, session):
+    def _get_optype_by_name(name):
+        """Get operation type by name"""
+        return session.OperationType.where(dict(category=category, name=name))[0]
+    return _get_optype_by_name

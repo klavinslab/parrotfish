@@ -53,7 +53,7 @@ setup(
     version=ver['version'],
     packages=['parrotfish', 'parrotfish.utils'],
     package_data={
-        'parrotfish': ['.environ']
+        'parrotfish': ['.environ', 'data']
     },
     url='https://github.com/klavinslab/parrotfish',
     license=ver['license'],

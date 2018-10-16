@@ -1,0 +1,11 @@
+import os
+from parrotfish.utils import testing_tools
+from parrotfish.core import open_from_local
+import sys
+
+operation_type_name = '{optype_name}'
+
+def test_with_3_ops(session, get_optype_by_name):
+    ot = get_optype_by_name(operation_type_name)
+    result = testing_tools.run_operation_test_with_random(ot, 3)
+    assert result['passed']
