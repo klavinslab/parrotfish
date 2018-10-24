@@ -1,23 +1,18 @@
 [[source]]
-
 url = "https://pypi.python.org/simple"
 verify_ssl = true
 name = "pypi"
 
-
 [packages]
-
 prompt-toolkit = "*"
 colorama = "*"
-magicdir = "*"
 dill = "*"
 cryptography = "*"
 opath = "*"
 fire = "*"
-
+pydent = "*"
 
 [dev-packages]
-
 sphinx = "*"
 pytest = "*"
 pytest-cov = "*"

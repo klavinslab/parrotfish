@@ -16,7 +16,8 @@ install_requires = [
     'opath',
     'colorama',
     'prompt_toolkit',
-    'cryptography'
+    'cryptography',
+    'fire',
 ]
 
 classifiers = [],
