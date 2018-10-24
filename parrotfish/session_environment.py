@@ -16,7 +16,7 @@ from parrotfish.utils import sanitize_filename, sanitize_attribute
 from parrotfish.utils.log import CustomLogging
 
 logger = CustomLogging.get_logger(__name__)
-from copy import deepcopy
+from copy import copy, deepcopy
 
 from cryptography.fernet import Fernet, InvalidToken
 
@@ -127,10 +127,10 @@ class SessionEnvironment(ODir):
 
     def save_to_pkl(self):
         """Save to pickle"""
-        copied = deepcopy(self)
-
+        copied_shallow = copy(self)
+        copied_shallow.aquarium_session = None
+        copied = deepcopy(copied_shallow)
         # remove aquarium_session from the pickle
-        copied.aquarium_session = None
         with self.env_pkl.open('wb') as f:
             dill.dump(copied, f)
 
@@ -329,7 +329,7 @@ class SessionEnvironment(ODir):
         lib_dir.meta.dump_json(library.dump(include={'source'}), indent=4)
 
         # write codes
-        lib_dir.source.write(library.code('source').content)
+        lib_dir.source.write(library.source.content)
 
     def read_operation_type(self, category, name):
         """

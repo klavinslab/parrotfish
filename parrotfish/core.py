@@ -17,6 +17,9 @@ logger = CustomLogging.get_logger(__name__)
 logger.setLevel("VERBOSE")
 from parrotfish.shell import Shell
 from parrotfish.utils import testing_tools
+
+from pydent.browser import Browser
+
 import json
 
 
@@ -32,7 +35,7 @@ class CLI(object):
 
     def _check_for_session(self):
         """Verifies that there is a current session set"""
-        if self._session_manager.current_session is None:
+        if self.session() is None:
             raise Exception(
                 "You must be logged in. Register an Aquarium session.")
 
@@ -55,8 +58,8 @@ class CLI(object):
     def _get_categories(self):
         """Returns dictionary of category names and Library/OperationType"""
         categories = {}
-        operation_types = self._session_manager.current_session.OperationType.all()
-        libraries = self._session_manager.current_session.Library.all()
+        operation_types = self.session().OperationType.all()
+        libraries = self.session().Library.all()
         for ot in operation_types:
             l = categories.get(ot.category, [])
             l.append(ot)
@@ -104,7 +107,9 @@ class CLI(object):
                 local_protocol = current_env.read_operation_type(category.name, protocol.name)
                 accessors = ['protocol', 'precondition', 'documentation', 'cost_model']
             for accessor in accessors:
-                code = getattr(local_protocol, accessor)
+                code = local_protocol.__dict__[accessor]
+                setattr(local_protocol, "{}_local".format(accessors))
+                setattr(local_protocol, accessor, None)
                 server_code = local_protocol.code(accessor)
                 diff_str = compare_content(server_code.content, code.content).strip()
                 if diff_str != '':
@@ -116,16 +121,16 @@ class CLI(object):
         self._save()
 
     def _get_operation_types_from_sever(self, category):
-        return self._session_manager.current_session.OperationType.where({"category": category})
+        return self.session().OperationType.where({"category": category})
 
     def _get_library_types_from_server(self, category):
-        return self._session_manager.current_session.Library.where({"category": category})
+        return self.session().Library.where({"category": category})
 
     def _get_all_operation_types_from_server(self):
-        return self._session_manager.current_session.OperationType.all()
+        return self.session().OperationType.all()
 
     def _get_all_library_types_from_server(self):
-        return self._session_manager.current_session.Library.all()
+        return self.session().Library.all()
 
     def fetch_all(self):
         """Fetches all protocols from the current session"""
@@ -141,6 +146,17 @@ class CLI(object):
         counter = 0
 
         make_msg = lambda m, count: "{}/{} saving {}:{}".format(count, total, m.category, m.name)
+
+        browser = Browser(self.session())
+
+        browser.retrieve(libs, 'source')
+
+        browser.retrieve(ots, 'protocol')
+        browser.retrieve(ots, 'precondition')
+        browser.retrieve(ots, 'cost_model')
+        browser.retrieve(ots, 'documentation')
+        browser.recursive_retrieve(ots, {"field_types": "allowable_field_types"})
+
 
         for ot in ots:
             counter += 1
@@ -386,7 +402,7 @@ class CLI(object):
     def create_pytest_boilerplate(self):
         """Creates pytest boilerplate code in the current sessions directory."""
         env = self._session_manager.current_env
-        env._create_pytest_boilerplate(self._session_manager.current_session)
+        env._create_pytest_boilerplate(self.session())
 
 
 def open_from_global():
