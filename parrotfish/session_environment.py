@@ -312,10 +312,7 @@ class SessionEnvironment(ODir):
         # write codes
         for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
             logger.verbose("    saving {}".format(accessor))
-            code_data = metadata.get(accessor, None)
-            if code_data is None:
-                code_data = {"content": ''}
-            ot_dir.get(accessor).write(code_data['content'])
+            ot_dir.get(accessor).write(metadata[accessor]['content'])
 
     def write_library(self, library):
         """

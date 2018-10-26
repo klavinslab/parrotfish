@@ -107,25 +107,20 @@ class CLI(object):
             accessors = []
             if protocol.has("source"):
                 local_protocol = current_env.read_library_type(category.name, protocol.name)
-                print(local_protocol)
                 server_protocol = self._session_manager.current_session.Library.find(local_protocol.id)
                 accessors = ["source"]
             elif protocol.has("protocol"):
                 local_protocol = current_env.read_operation_type(category.name, protocol.name)
-                print(local_protocol)
                 server_protocol = self._session_manager.current_session.OperationType.find(local_protocol.id)
                 accessors = ['protocol', 'precondition', 'documentation', 'cost_model']
             for accessor in accessors:
                 code = getattr(local_protocol, accessor)
                 server_code = server_protocol.code(accessor)
-                print("{} {}".format(code.id, server_code.id))
-                print(len(server_code.content))
-                print(len(code.content))
                 diff_str = compare_content(server_code.content, code.content).strip()
                 if diff_str != '':
                     logger.cli("++ Updating {}/{} ({})".format(category.name, local_protocol.name, accessor))
                     print(diff_str)
-                    # code.update()
+                    code.update()
                 else:
                     logger.cli("-- No changes for {}/{} ({})".format(category.name, local_protocol.name, accessor))
         self._save()
@@ -158,6 +153,22 @@ class CLI(object):
     def _fetch(self, ots, libs):
         logger.cli("{} operation_types found".format(len(ots)))
         logger.cli("This may take awhile...")
+
+        # codes = self.session().Code.where({"parent_id": [ot.id for ot in ots], "parent_class": "OperationType"})
+        # group_by_parent = {}
+        # for c in codes:
+        #     group_by_parent.setdefault(c.parent_id, {})
+        #     d = group_by_parent[c.parent_id]
+        #     d.setdefault(c.name, [])
+        #     d[c.name].append(c)
+        # for ot in ots:
+        #     code_dict = group_by_parent[ot.id]
+        #     setattr(ot, 'codes', [])
+        #     for accessor in code_dict:
+        #         codes = sorted(code_dict[accessor], key=lambda x: x.id)
+        #         setattr(ot, accessor, codes[-1])
+        #         ot.codes += codes
+
         total = len(ots) + len(libs)
         counter = 0
 
@@ -186,7 +197,6 @@ class CLI(object):
     def fetch(self, category, name=None):
         """ Fetch protocols from the current session & category and pull to local repo. """
         self._check_for_session()
-        print(logger)
         ots = self._get_operation_types_from_sever(category, name=name)
         libs = self._get_library_types_from_server(category, name=name)
         self._fetch(ots, libs)

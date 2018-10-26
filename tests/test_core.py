@@ -66,9 +66,9 @@ def test_set_current(cli, credentials):
     assert cli._session_manager.current_session.name == 'nursery'
 
     # add another session
-    cli.register(**credentials['production'])
+    cli.register(**credentials['nursery2'])
     assert len(cli.sessions) == 2
-    assert cli._session_manager.current_session.name == 'production'
+    assert cli._session_manager.current_session.name == 'nursery2'
 
     # switch to nursery
     cli.set_session("nursery")
