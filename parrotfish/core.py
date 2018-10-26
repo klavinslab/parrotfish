@@ -150,24 +150,42 @@ class CLI(object):
         libs = self._get_all_library_types_from_server()
         self._fetch(ots, libs)
 
+    def _group_code(self, models, parent_class):
+        """
+        Group code by parent_id and accessor
+        :return: dict
+        """
+        codes = self.session().Code.where({"parent_id": [model.id for model in models], "parent_class": parent_class})
+        group_by_parent = {}
+        for c in codes:
+            group_by_parent.setdefault(c.parent_id, {})
+            d = group_by_parent[c.parent_id]
+            d.setdefault(c.name, [])
+            d[c.name].append(c)
+        return group_by_parent
+
+    def _cache_code(self, models):
+        group_by_type = {}
+        for model in models:
+            group_by_type.setdefault(model.__class__.__name__, [])
+            group_by_type[model.__class__.__name__].append(model)
+
+        for mtype, grouped_models in group_by_type.items():
+            grouped_by_parent_id = self._group_code(grouped_models, mtype)
+            for model in grouped_models:
+                code_dict = grouped_by_parent_id[model.id]
+                setattr(model, 'codes', [])
+                for accessor in code_dict:
+                    codes = sorted(code_dict[accessor], key=lambda x: x.id)
+                    setattr(model, accessor, codes[-1])
+                    model.codes += codes
+        return models
+
     def _fetch(self, ots, libs):
         logger.cli("{} operation_types found".format(len(ots)))
         logger.cli("This may take awhile...")
 
-        # codes = self.session().Code.where({"parent_id": [ot.id for ot in ots], "parent_class": "OperationType"})
-        # group_by_parent = {}
-        # for c in codes:
-        #     group_by_parent.setdefault(c.parent_id, {})
-        #     d = group_by_parent[c.parent_id]
-        #     d.setdefault(c.name, [])
-        #     d[c.name].append(c)
-        # for ot in ots:
-        #     code_dict = group_by_parent[ot.id]
-        #     setattr(ot, 'codes', [])
-        #     for accessor in code_dict:
-        #         codes = sorted(code_dict[accessor], key=lambda x: x.id)
-        #         setattr(ot, accessor, codes[-1])
-        #         ot.codes += codes
+        self._cache_code(ots + libs)
 
         total = len(ots) + len(libs)
         counter = 0
