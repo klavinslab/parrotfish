@@ -350,10 +350,9 @@ class SessionEnvironment(ODir):
         metadata = ot_dir.meta.load_json()  # load the meta data from the .json file
         ot = OperationType.load(metadata)
 
-        ot.protocol.content = ot_dir.protocol.read()
-        ot.precondition.content = ot_dir.precondition.read()
-        ot.documentation.content = ot_dir.documentation.read()
-        ot.cost_model.content = ot_dir.cost_model.read()
+        for accessor in ['protocol', 'precondition', 'cost_model', 'documentation']:
+            code = getattr(ot, accessor)
+            code.content = ot_dir.get(accessor).read()
         ot.connect_to_session(self.aquarium_session)
         return ot
 
@@ -373,7 +372,8 @@ class SessionEnvironment(ODir):
         metadata = lib_dir.meta.load_json()
         lib = Library.load(metadata)
 
-        lib.source.content = lib_dir.source.read()
+        source = lib.source
+        source.content = lib_dir.source.read()
         lib.connect_to_session(self.aquarium_session)
         return lib
 

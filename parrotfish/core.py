@@ -13,8 +13,10 @@ from requests.exceptions import InvalidSchema
 from parrotfish.session_environment import SessionManager
 from parrotfish.utils import CustomLogging, format_json, compare_content
 
+
+CustomLogging.set_level("VERBOSE")
 logger = CustomLogging.get_logger(__name__)
-logger.setLevel("VERBOSE")
+
 from parrotfish.shell import Shell
 from parrotfish.utils import testing_tools
 import json
@@ -49,7 +51,10 @@ class CLI(object):
         sess_dict = {}
         for session_name, session in self._session_manager.sessions.items():
             val = str(session)
-            sess_dict[session_name] = val
+            key = session_name
+            if session is self._session_manager.current_session:
+                key = "*" + key
+            sess_dict[key] = val
         return sess_dict
 
     def _get_categories(self):
@@ -90,27 +95,37 @@ class CLI(object):
         for cat in categories:
             self.push_category(cat)
 
-    def push_category(self, category_name):
+    def push(self, category_name, name=None):
         """Push all :class:`OperationType` and :class:`Library` in a category"""
         current_env = self._session_manager.current_env
         category = current_env.get_category_dir(category_name)
         for protocol in category.list_dirs():
+            if name:
+                if name != protocol.name:
+                    continue
             local_protocol = None
             accessors = []
             if protocol.has("source"):
                 local_protocol = current_env.read_library_type(category.name, protocol.name)
+                print(local_protocol)
+                server_protocol = self._session_manager.current_session.Library.find(local_protocol.id)
                 accessors = ["source"]
             elif protocol.has("protocol"):
                 local_protocol = current_env.read_operation_type(category.name, protocol.name)
+                print(local_protocol)
+                server_protocol = self._session_manager.current_session.OperationType.find(local_protocol.id)
                 accessors = ['protocol', 'precondition', 'documentation', 'cost_model']
             for accessor in accessors:
                 code = getattr(local_protocol, accessor)
-                server_code = local_protocol.code(accessor)
+                server_code = server_protocol.code(accessor)
+                print("{} {}".format(code.id, server_code.id))
+                print(len(server_code.content))
+                print(len(code.content))
                 diff_str = compare_content(server_code.content, code.content).strip()
                 if diff_str != '':
                     logger.cli("++ Updating {}/{} ({})".format(category.name, local_protocol.name, accessor))
                     print(diff_str)
-                    code.update()
+                    # code.update()
                 else:
                     logger.cli("-- No changes for {}/{} ({})".format(category.name, local_protocol.name, accessor))
         self._save()
@@ -171,6 +186,7 @@ class CLI(object):
     def fetch(self, category, name=None):
         """ Fetch protocols from the current session & category and pull to local repo. """
         self._check_for_session()
+        print(logger)
         ots = self._get_operation_types_from_sever(category, name=name)
         libs = self._get_library_types_from_server(category, name=name)
         self._fetch(ots, libs)
@@ -443,7 +459,6 @@ def open_from_local(directory, encryption_key=None):
 
 
 def run():
-    logger.setLevel("VERBOSE")
     cli = open_from_global()
     fire.Fire(cli)
 

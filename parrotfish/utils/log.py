@@ -12,7 +12,7 @@ except ImportError:  # fallback so that the imported classes always exist
         def __getattr__(self, name): return ''
     Fore = Back = Style = ColorFallback()
 
-logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.WARNING)
+# logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.WARNING)
 
 
 class CustomLogging(object):
@@ -36,14 +36,21 @@ class CustomLogging(object):
     @classmethod
     def set_level(cls, level):
         cls.log_level = level
-        [c.setLevel(level) for c in cls.children]
+        # [c.setLevel(level) for c in cls.children]
 
     @classmethod
     def get_logger(cls, name):
         logger = logging.getLogger(name)
         logger.setLevel(cls.log_level)
-        cls.children.append(logger)
+        if not logger.handlers:
+            ch = logging.StreamHandler()
+            ch.setLevel(cls.log_level)
+
+            formatter = logging.Formatter('%(levelname)s: %(message)s')
+            ch.setFormatter(formatter)
+            logger.addHandler(ch)
         return logger
+
 
 CustomLogging.add_log_function("VERBOSE", 21, color=Fore.LIGHTMAGENTA_EX)
 CustomLogging.add_log_function("CLI", 29)

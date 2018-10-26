@@ -29,6 +29,10 @@ def color_diff(diff):
 
 
 def compare_content(content1, content2):
+    if content1 is None:
+        content1 = ''
+    if content2 is None:
+        content2 = ''
     lines1 = content1.split('\n')
     lines2 = content2.split('\n')
     diff = color_diff(difflib.unified_diff(lines1, lines2))

@@ -21,7 +21,7 @@ def test_register(cli, credentials):
     assert len(cli.sessions) == 1
 
     # add another session
-    cli.register(**credentials['production'])
+    cli.register(**credentials['nursery2'])
     assert len(cli.sessions) == 2
 
 
@@ -165,7 +165,7 @@ def test_push_category(cli, credentials):
     # push the content
     new_content = str(uuid.uuid4())
     protocol.protocol.write(new_content)
-    cli.push_category(OT_TEST_CATEGORY)
+    cli.push(OT_TEST_CATEGORY)
 
     # new operation types
     new_local_ot = session.read_operation_type(OT_TEST_CATEGORY, protocol.name)
@@ -183,6 +183,7 @@ def test_run_test_for_single_operation_type(cli, credentials):
     cli.fetch(OT_TEST_CATEGORY)
     result = cli.run_test(OT_TEST_CATEGORY, "ParrotFishTestOperation", 5, True)
     print(result)
+
 
 def test_run_test_for_category(cli, credentials):
     cli.register(**credentials['nursery'])
