@@ -121,6 +121,7 @@ class CLI(object):
                     logger.cli("++ Updating {}/{} ({})".format(category.name, local_protocol.name, accessor))
                     print(diff_str)
                     code.update()
+                    self._session_manager.current_env.write_operation_type(local_protocol)
                 else:
                     logger.cli("-- No changes for {}/{} ({})".format(category.name, local_protocol.name, accessor))
         self._save()
