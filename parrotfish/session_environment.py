@@ -110,8 +110,8 @@ class SessionEnvironment(ODir):
             logger.warning(self.encrypted_password)
             logger.warning(
                 "Encryption key mismatch! Cannot create session. Use 'pfish generate-encryption-key' to generate"
-                "a new key. Alternatively, use 'pfish set-encryption-key [YOURKEY]' if you have a pre-generated"
-                "key")
+                " a new key. Alternatively, use 'pfish set-encryption-key [YOURKEY]' if you have a pre-generated"
+                " key")
         self.aquarium_session = aqsession
         return aqsession
 
@@ -312,7 +312,10 @@ class SessionEnvironment(ODir):
         # write codes
         for accessor in ['protocol', 'precondition', 'documentation', 'cost_model']:
             logger.verbose("    saving {}".format(accessor))
-            ot_dir.get(accessor).write(metadata[accessor]['content'])
+            code_data = metadata.get(accessor, None)
+            if code_data is None:
+                code_data = {"content": ''}
+            ot_dir.get(accessor).write(code_data['content'])
 
     def write_library(self, library):
         """

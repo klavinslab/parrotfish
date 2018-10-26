@@ -115,11 +115,17 @@ class CLI(object):
                     logger.cli("-- No changes for {}/{} ({})".format(category.name, local_protocol.name, accessor))
         self._save()
 
-    def _get_operation_types_from_sever(self, category):
-        return self._session_manager.current_session.OperationType.where({"category": category})
+    def _get_operation_types_from_sever(self, category, name=None):
+        query = {"category": category}
+        if name:
+            query['name'] = name
+        return self._session_manager.current_session.OperationType.where(query)
 
-    def _get_library_types_from_server(self, category):
-        return self._session_manager.current_session.Library.where({"category": category})
+    def _get_library_types_from_server(self, category, name=None):
+        query = {"category": category}
+        if name:
+            query['name'] = name
+        return self._session_manager.current_session.Library.where(query)
 
     def _get_all_operation_types_from_server(self):
         return self._session_manager.current_session.OperationType.all()
@@ -162,11 +168,11 @@ class CLI(object):
                 logger.error("Could not fetch {}\n{}.".format(lib.name, e))
         self._save()
 
-    def fetch(self, category):
+    def fetch(self, category, name=None):
         """ Fetch protocols from the current session & category and pull to local repo. """
         self._check_for_session()
-        ots = self._get_operation_types_from_sever(category)
-        libs = self._get_library_types_from_server(category)
+        ots = self._get_operation_types_from_sever(category, name=name)
+        libs = self._get_library_types_from_server(category, name=name)
         self._fetch(ots, libs)
 
     @property
