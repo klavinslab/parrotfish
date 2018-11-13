@@ -345,12 +345,11 @@ class SessionEnvironment(ODir):
         """
         ot_dir = self.get_operation_type_dir(category, name)
         metadata = ot_dir.meta.load_json()  # load the meta data from the .json file
-        ot = OperationType.load(metadata)
+        ot = OperationType.load_from(metadata, self.aquarium_session)
 
         for accessor in ['protocol', 'precondition', 'cost_model', 'documentation']:
             code = getattr(ot, accessor)
             code.content = ot_dir.get(accessor).read()
-        ot.connect_to_session(self.aquarium_session)
         return ot
 
     def read_library_type(self, category, name):
@@ -367,11 +366,10 @@ class SessionEnvironment(ODir):
         """
         lib_dir = self.get_library_type_dir(category, name)
         metadata = lib_dir.meta.load_json()
-        lib = Library.load(metadata)
+        lib = Library.load_from(metadata, self.aquarium_session)
 
         source = lib.source
         source.content = lib_dir.source.read()
-        lib.connect_to_session(self.aquarium_session)
         return lib
 
     # def get_optype_test(self, operation_type):
@@ -411,7 +409,7 @@ class SessionEnvironment(ODir):
             for ot_dir in cat.list_dirs():
                 # ot_dir = self.get_operation_type_dir(category, name)
                 metadata = ot_dir.meta.load_json()  # load the meta data from the .json file
-                ot = OperationType.load(metadata)
+                ot = OperationType.load_from(metadata, self.aquarium_session)
                 filename = 'test_{}.py'.format(sanitize_filename(ot.name))
                 txt = bp_test_code.format(optype_name=ot.name)
                 cat_test_dir.write_file(filename, mode='w', data=txt)
