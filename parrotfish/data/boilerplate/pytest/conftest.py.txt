@@ -12,5 +12,5 @@ def root_dir():
 
 @pytest.fixture(scope="module")
 def cli(root_dir):
-    cli_inst = open_from_local(root_dir)
+    cli_inst = open_from_local(os.path.join(root_dir, '..')))
     return cli_inst
