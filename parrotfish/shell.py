@@ -9,9 +9,9 @@ import re
 import fire
 from parrotfish.utils import CustomLogging, get_callables
 from prompt_toolkit import prompt
-from prompt_toolkit.contrib.completers import WordCompleter, PathCompleter
-from prompt_toolkit.styles import style_from_dict
-from prompt_toolkit.token import Token
+from prompt_toolkit.completion import WordCompleter, PathCompleter
+from prompt_toolkit.styles import Style
+from prompt_toolkit.formatted_text import HTML
 
 logger = CustomLogging.get_logger(__name__)
 
@@ -43,22 +43,17 @@ class CustomCompleter(WordCompleter):
 
 class Shell(object):
 
-    PROMPT_STYLE = style_from_dict({
+    PROMPT_STYLE = Style.from_dict({
         # User input.
-        Token: '#ff0066',
+        '': '#ff0066',
 
         # Prompt.
-        Token.Username: '#884444 italic',
-        Token.At: '#00aa00',
-        Token.Colon: '#00aa00',
-        Token.Pound: '#00aa00',
-        Token.Host: '#000088 bg:#aaaaff',
-        Token.Path: '#884444 underline',
-
-        # Make a selection reverse/underlined.
-        # (Use Control-Space to select.)
-        Token.SelectedText: 'reverse underline',
-        Token.Toolbar: '#ffffff bg:#333333',
+        'username': '#884444 italic',
+        'at': '#00aa00',
+        'colon': '#00aa00',
+        'pound': '#00aa00',
+        'host': '#000088 bg:#aaaaff',
+        'path': '#884444 underline',
     })
 
     EXIT = -1
@@ -134,18 +129,17 @@ class Shell(object):
         print("Entering interactive")
         res = 1
         while not res == self.EXIT:
-            def get_bottom_toolbar_tokens(cli):
-                # return [(Token.Toolbar, ' \'-h\' or \'--help\' for help | \'exit\' to exit')]
-                return [(Token.Toolbar, 'Dir: {}'.format(str(self.cli._session_manager.abspath)))]
-
-            answer = prompt(completer=self.command_completer(),
-                            get_prompt_tokens=self.get_prompt_tokens,
+            answer = prompt(self.get_prompt_tokens(),
+                            completer=self.command_completer(),
                             style=self.PROMPT_STYLE,
-                            get_bottom_toolbar_tokens=get_bottom_toolbar_tokens)
+                            bottom_toolbar=self.bottom_toolbar)
             res = self.parse_shell_command(answer)
         print("goodbye!")
 
-    def get_prompt_tokens(self, ljk):
+    def bottom_toolbar(self):
+        return HTML('DIR: {}'.format(str(self.cli._session_manager.abspath)))
+
+    def get_prompt_tokens(self):
         login = '<not logged in>'
         url = '<???>'
         name = '<NO SESSION>'
@@ -155,10 +149,10 @@ class Shell(object):
             name = self.cli._session_manager.current_session.name
 
         return [
-            (Token.Username, login),
-            (Token.At, '@'),
-            (Token.Host, url),
-            (Token.Colon, ':'),
-            (Token.Pound, '{}'.format(name + ": "))
+            ('class:username', login),
+            ('class:at', '@'),
+            ('class:host', url),
+            ('class:color', ':'),
+            ('class:pound', '{}'.format(name + ": "))
         ]
 

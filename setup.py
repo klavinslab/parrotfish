@@ -15,7 +15,7 @@ install_requires = [
     'dill',
     'opath',
     'colorama',
-    'prompt_toolkit',
+    'prompt_toolkit==2.0.7',
     'cryptography',
     'fire',
 ]
