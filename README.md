@@ -15,6 +15,8 @@
 
 Code and manage your Aquarium protocols and libraries through your IDE
 
+This project is no longer maintained, we suggest that you use [Nemo](https://github.com/klavinslab/nemo) instead.
+
 ## Version/Status
 
 Code and ideas were taken from Garrett Newman. This branch is rebranding the interface
